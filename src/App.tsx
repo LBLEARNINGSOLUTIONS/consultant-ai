@@ -3,8 +3,10 @@ import { useAuth } from './hooks/useAuth';
 import { useInterviews } from './hooks/useInterviews';
 import { Login } from './components/auth/Login';
 import { TranscriptUpload } from './components/upload/TranscriptUpload';
+import { AnalysisViewer } from './components/analysis/AnalysisViewer';
 import { UploadResult } from './services/uploadService';
-import { FileText, LogOut, Plus, Trash2 } from 'lucide-react';
+import { Interview } from './types/database';
+import { FileText, LogOut, Plus, Trash2, Eye } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
 
@@ -16,10 +18,12 @@ function App() {
     createInterview,
     deleteInterview,
     analyzeInterview,
+    updateInterview,
   } = useInterviews(user?.id);
 
   const [showUpload, setShowUpload] = useState(false);
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set());
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
 
   // Show login if not authenticated
   if (authLoading) {
@@ -228,32 +232,42 @@ function App() {
                   )}
 
                   {interview.analysis_status === 'completed' && (
-                    <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-slate-600">Workflows:</span>{' '}
-                        <span className="font-semibold text-slate-900">
-                          {Array.isArray(interview.workflows) ? interview.workflows.length : 0}
-                        </span>
+                    <>
+                      <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-600">Workflows:</span>{' '}
+                          <span className="font-semibold text-slate-900">
+                            {Array.isArray(interview.workflows) ? interview.workflows.length : 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-600">Pain Points:</span>{' '}
+                          <span className="font-semibold text-slate-900">
+                            {Array.isArray(interview.pain_points) ? interview.pain_points.length : 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-600">Tools:</span>{' '}
+                          <span className="font-semibold text-slate-900">
+                            {Array.isArray(interview.tools) ? interview.tools.length : 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-600">Roles:</span>{' '}
+                          <span className="font-semibold text-slate-900">
+                            {Array.isArray(interview.roles) ? interview.roles.length : 0}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-slate-600">Pain Points:</span>{' '}
-                        <span className="font-semibold text-slate-900">
-                          {Array.isArray(interview.pain_points) ? interview.pain_points.length : 0}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Tools:</span>{' '}
-                        <span className="font-semibold text-slate-900">
-                          {Array.isArray(interview.tools) ? interview.tools.length : 0}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Roles:</span>{' '}
-                        <span className="font-semibold text-slate-900">
-                          {Array.isArray(interview.roles) ? interview.roles.length : 0}
-                        </span>
-                      </div>
-                    </div>
+
+                      <button
+                        onClick={() => setSelectedInterview(interview)}
+                        className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Analysis
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -289,6 +303,19 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Analysis Viewer Modal */}
+      {selectedInterview && (
+        <AnalysisViewer
+          interview={selectedInterview}
+          onClose={() => setSelectedInterview(null)}
+          onUpdate={async (updates) => {
+            await updateInterview(selectedInterview.id, updates);
+            // Update local state
+            setSelectedInterview({ ...selectedInterview, ...updates });
+          }}
+        />
+      )}
     </div>
   );
 }
