@@ -1,0 +1,167 @@
+═══════════════════════════════════════════════════════════════
+                    CONSULTANTAI - QUICKSTART
+═══════════════════════════════════════════════════════════════
+
+📍 Location: /Users/carliegbert/Desktop/consultant-ai
+
+✅ STATUS: MVP Complete - Ready to Run!
+
+═══════════════════════════════════════════════════════════════
+                      5-MINUTE SETUP
+═══════════════════════════════════════════════════════════════
+
+1. INSTALL DEPENDENCIES
+   └─ cd /Users/carliegbert/Desktop/consultant-ai
+   └─ npm install
+
+2. SETUP SUPABASE (2 min)
+   └─ Go to: https://supabase.com/dashboard
+   └─ Create new project
+   └─ Go to SQL Editor
+   └─ Paste contents of: supabase-schema.sql
+   └─ Click "Run"
+   └─ Copy: Project URL + anon key
+
+3. GET ANTHROPIC KEY (1 min)
+   └─ Go to: https://console.anthropic.com
+   └─ Create API key
+   └─ Copy the key (starts with sk-ant-api03-)
+
+4. CONFIGURE .ENV
+   └─ cp .env.example .env
+   └─ Edit .env with your credentials:
+      • VITE_SUPABASE_URL=https://xxx.supabase.co
+      • VITE_SUPABASE_ANON_KEY=eyJhbGc...
+      • VITE_ANTHROPIC_API_KEY=sk-ant-api03-...
+
+5. START APP
+   └─ npm run dev
+   └─ Open: http://localhost:5173
+
+═══════════════════════════════════════════════════════════════
+                       WHAT WORKS NOW
+═══════════════════════════════════════════════════════════════
+
+✅ User sign up / sign in
+✅ Upload .txt transcripts (drag & drop)
+✅ Claude AI analysis (automatic)
+✅ View interview cards with stats
+✅ Delete interviews
+✅ Real-time status updates
+✅ Cloud database sync
+
+═══════════════════════════════════════════════════════════════
+                    WHAT'S NOT BUILT YET
+═══════════════════════════════════════════════════════════════
+
+⏳ Detailed analysis viewer (tabs)
+⏳ Inline editing
+⏳ Company summaries
+⏳ PDF export
+⏳ .docx / .pdf file upload
+
+Say "keep building" to add these features!
+
+═══════════════════════════════════════════════════════════════
+                         TEST IT
+═══════════════════════════════════════════════════════════════
+
+Create test-interview.txt with this content:
+
+---
+Interviewer: Tell me about your role.
+
+Sarah: I'm a Senior Account Manager. I spend 80% of my day
+manually fixing billing errors in spreadsheets.
+
+Interviewer: Walk me through that process.
+
+Sarah: Sales closes deals in Salesforce but doesn't fill in
+required fields. I chase them for details, then manually type
+everything into Oracle NetSuite. Takes 2 hours per client.
+If I make a typo, billing fails and clients complain.
+
+Interviewer: Who else is involved?
+
+Sarah: Ops team. I email them "New Client Ready" - no formal
+handoff. Sometimes they miss it and clients wait a week.
+
+Interviewer: Training?
+
+Sarah: Zero. I learned by Googling error codes.
+---
+
+Upload this file and watch Claude analyze it!
+
+Expected results:
+• Workflows: 1 (Client onboarding)
+• Pain Points: 3-4 (manual entry, errors, handoffs)
+• Tools: 3 (Salesforce, NetSuite, Excel)
+• Roles: 3 (Account Manager, Sales, Ops)
+
+═══════════════════════════════════════════════════════════════
+                        COST INFO
+═══════════════════════════════════════════════════════════════
+
+Claude API (Anthropic):
+• Per analysis: ~$0.015 (1.5 cents)
+• 100 analyses: ~$1.50/month
+• 1000 analyses: ~$15/month
+
+Supabase:
+• Free tier: 500MB (enough for 5000 interviews)
+• Pro: $25/month (if you need more)
+
+═══════════════════════════════════════════════════════════════
+                       TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+❌ "Missing environment variables"
+   → Check .env file exists and has all 3 variables
+   → Restart dev server: npm run dev
+
+❌ "Failed to fetch"
+   → Verify Supabase URL is correct
+   → Check supabase-schema.sql was run successfully
+
+❌ "Authentication error" (Claude)
+   → Check Anthropic API key
+   → Verify you have credits in account
+
+❌ Analysis stuck on "Analyzing"
+   → Open browser console (F12)
+   → Check for error messages
+   → Verify API key has credits
+
+═══════════════════════════════════════════════════════════════
+                         KEY FILES
+═══════════════════════════════════════════════════════════════
+
+📖 SETUP.md           - Detailed setup guide
+📊 BUILD-STATUS.md    - What's built, what's not
+📝 README.md          - Project overview
+🗄️  supabase-schema.sql - Database schema (run this in Supabase)
+🔧 .env.example       - Environment template
+⚛️  src/App.tsx        - Main application
+🔐 src/hooks/useAuth.ts - Authentication
+🤖 src/services/analysisService.ts - Claude AI
+
+═══════════════════════════════════════════════════════════════
+                         COMMANDS
+═══════════════════════════════════════════════════════════════
+
+npm run dev      - Start development server
+npm run build    - Build for production
+npm run preview  - Preview production build
+
+═══════════════════════════════════════════════════════════════
+
+🎯 READY TO GO!
+
+1. Run through 5-minute setup above
+2. Test with sample transcript
+3. Say "keep building" for advanced features
+
+Questions? Check SETUP.md or BUILD-STATUS.md
+
+═══════════════════════════════════════════════════════════════
