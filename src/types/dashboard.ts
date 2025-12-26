@@ -1,5 +1,3 @@
-import { Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk } from './analysis';
-
 // Aggregated workflow data
 export interface WorkflowAggregation {
   name: string;

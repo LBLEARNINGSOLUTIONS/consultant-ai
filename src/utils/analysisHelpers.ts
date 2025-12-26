@@ -142,7 +142,7 @@ export function calculateDashboardMetrics(interviews: Interview[]): DashboardMet
   // Aggregate workflows
   const workflowMap = new Map<string, WorkflowAggregation>();
   completedInterviews.forEach(interview => {
-    const workflows = (interview.workflows as Workflow[]) || [];
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
     workflows.forEach(workflow => {
       const key = workflow.name.toLowerCase();
       const existing = workflowMap.get(key);
@@ -166,7 +166,7 @@ export function calculateDashboardMetrics(interviews: Interview[]): DashboardMet
   // Aggregate pain points
   const painPointMap = new Map<string, PainPointAggregation>();
   completedInterviews.forEach(interview => {
-    const painPoints = (interview.pain_points as PainPoint[]) || [];
+    const painPoints = (interview.pain_points as unknown as PainPoint[]) || [];
     painPoints.forEach(pp => {
       const key = pp.description.toLowerCase().slice(0, 50);
       const existing = painPointMap.get(key);
@@ -195,7 +195,7 @@ export function calculateDashboardMetrics(interviews: Interview[]): DashboardMet
   // Aggregate tools
   const toolMap = new Map<string, ToolAggregation>();
   completedInterviews.forEach(interview => {
-    const tools = (interview.tools as Tool[]) || [];
+    const tools = (interview.tools as unknown as Tool[]) || [];
     tools.forEach(tool => {
       const key = tool.name.toLowerCase();
       const existing = toolMap.get(key);
