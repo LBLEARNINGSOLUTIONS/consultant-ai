@@ -117,6 +117,25 @@ export function useInterviews(userId?: string) {
     }
   };
 
+  const assignToCompany = async (interviewId: string, companyId: string | null) => {
+    try {
+      setError(null);
+      const { error: updateError } = await supabase
+        .from('interviews')
+        .update({ company_id: companyId })
+        .eq('id', interviewId);
+
+      if (updateError) throw updateError;
+
+      await fetchInterviews();
+      return { error: null };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to assign interview to company';
+      setError(errorMessage);
+      return { error: errorMessage };
+    }
+  };
+
   const analyzeInterview = async (id: string, transcript: string) => {
     try {
       setError(null);
@@ -172,6 +191,7 @@ export function useInterviews(userId?: string) {
     createInterview,
     updateInterview,
     deleteInterview,
+    assignToCompany,
     analyzeInterview,
     refreshInterviews: fetchInterviews,
   };

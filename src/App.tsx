@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useInterviews } from './hooks/useInterviews';
 import { useCompanySummary } from './hooks/useCompanySummary';
+import { useCompanies } from './hooks/useCompanies';
 import { Login } from './components/auth/Login';
 import { TranscriptUpload } from './components/upload/TranscriptUpload';
 import { AnalysisViewer } from './components/analysis/AnalysisViewer';
 import { CompanySummaryView } from './components/summary/CompanySummaryView';
+import { CompanySidebar, CompanyFilter } from './components/companies/CompanySidebar';
+import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { UploadResult } from './services/uploadService';
-import { Interview, CompanySummary } from './types/database';
+import { Interview, CompanySummary, Company } from './types/database';
 import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
@@ -22,6 +25,7 @@ function App() {
     deleteInterview,
     analyzeInterview,
     updateInterview,
+    assignToCompany,
   } = useInterviews(user?.id);
 
   const {
@@ -31,7 +35,18 @@ function App() {
     deleteSummary,
   } = useCompanySummary(user?.id);
 
+  const {
+    companies,
+    loading: companiesLoading,
+    createCompany,
+    updateCompany,
+    deleteCompany,
+  } = useCompanies(user?.id);
+
   const [showUpload, setShowUpload] = useState(false);
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<CompanyFilter>(null);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set());
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [viewMode, setViewMode] = useState<'interviews' | 'summaries' | 'analytics'>('interviews');
@@ -166,6 +181,53 @@ function App() {
     }
   };
 
+  // Filter interviews by selected company
+  const filteredInterviews = useMemo(() => {
+    if (selectedCompanyFilter === null) {
+      return interviews; // Show all
+    } else if (selectedCompanyFilter === 'unassigned') {
+      return interviews.filter(i => !i.company_id);
+    } else {
+      return interviews.filter(i => i.company_id === selectedCompanyFilter);
+    }
+  }, [interviews, selectedCompanyFilter]);
+
+  // Company handlers
+  const handleCreateCompany = async (name: string, color: string, description?: string) => {
+    if (!user) return;
+    await createCompany({
+      user_id: user.id,
+      name,
+      color,
+      description: description || null,
+    });
+  };
+
+  const handleEditCompany = (company: Company) => {
+    setEditingCompany(company);
+    setShowCompanyModal(true);
+  };
+
+  const handleUpdateCompany = async (name: string, color: string, description?: string) => {
+    if (!editingCompany) return;
+    await updateCompany(editingCompany.id, {
+      name,
+      color,
+      description: description || null,
+    });
+    setEditingCompany(null);
+  };
+
+  const handleDeleteCompany = async (company: Company) => {
+    if (window.confirm(`Are you sure you want to delete "${company.name}"? Interviews will be moved to Unassigned.`)) {
+      await deleteCompany(company.id);
+      // If we were viewing this company, reset to "All"
+      if (selectedCompanyFilter === company.id) {
+        setSelectedCompanyFilter(null);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -296,148 +358,173 @@ function App() {
           </div>
         )}
 
-        {/* Interviews List */}
-        {viewMode === 'interviews' && interviewsLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div
-                key={i}
-                className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse"
-              >
-                <div className="h-5 bg-slate-200 rounded w-1/3 mb-4"></div>
-                <div className="h-4 bg-slate-200 rounded w-full mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded w-2/3"></div>
-              </div>
-            ))}
-          </div>
-        ) : viewMode === 'interviews' && interviews.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-              <FileText className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              No interviews yet
-            </h3>
-            <p className="text-slate-600 mb-6">
-              Upload your first interview transcript to get started with AI analysis
-            </p>
-            <button
-              onClick={() => setShowUpload(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Upload Transcript
-            </button>
-          </div>
-        ) : viewMode === 'interviews' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {interviews.map((interview) => {
-              const isSelected = selectedInterviewIds.has(interview.id);
-              const canSelect = interview.analysis_status === 'completed';
+        {/* Interviews Section with Sidebar */}
+        {viewMode === 'interviews' && (
+          <div className="flex gap-6">
+            {/* Company Sidebar */}
+            <CompanySidebar
+              companies={companies}
+              interviews={interviews}
+              selectedFilter={selectedCompanyFilter}
+              onSelectFilter={setSelectedCompanyFilter}
+              onCreateCompany={() => {
+                setEditingCompany(null);
+                setShowCompanyModal(true);
+              }}
+              onEditCompany={handleEditCompany}
+              onDeleteCompany={handleDeleteCompany}
+            />
 
-              return (
-                <div
-                  key={interview.id}
-                  className={`bg-white rounded-xl border-2 p-6 hover:shadow-lg transition-all ${
-                    isSelected
-                      ? 'border-green-500 ring-2 ring-green-200'
-                      : 'border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      {canSelect && (
-                        <button
-                          onClick={() => handleToggleInterviewSelection(interview.id)}
-                          className="mt-0.5 text-slate-400 hover:text-green-600 transition-colors"
-                          title={isSelected ? 'Deselect for summary' : 'Select for summary'}
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <Square className="w-5 h-5" />
-                          )}
-                        </button>
-                      )}
-                      <h3 className="font-semibold text-slate-900 flex-1 line-clamp-2">
-                        {interview.title}
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => handleDelete(interview.id)}
-                      className="ml-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Delete interview"
+            {/* Interviews Grid */}
+            <div className="flex-1">
+              {interviewsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <div className="h-5 bg-slate-200 rounded w-1/3 mb-4"></div>
+                      <div className="h-4 bg-slate-200 rounded w-full mb-2"></div>
+                      <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredInterviews.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+                    <FileText className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    {interviews.length === 0 ? 'No interviews yet' : 'No interviews in this folder'}
+                  </h3>
+                  <p className="text-slate-600 mb-6">
+                    {interviews.length === 0
+                      ? 'Upload your first interview transcript to get started with AI analysis'
+                      : 'Drag interviews here or select a different folder'}
+                  </p>
+                  {interviews.length === 0 && (
+                    <button
+                      onClick={() => setShowUpload(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Upload Transcript
                     </button>
-                  </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">Status:</span>
-                    {getStatusBadge(interview.analysis_status, interview.id)}
-                  </div>
-
-                  <div className="text-xs text-slate-500">
-                    Created {formatRelative(interview.created_at)}
-                  </div>
-
-                  {interview.analyzed_at && (
-                    <div className="text-xs text-slate-500">
-                      Analyzed {formatDate(interview.analyzed_at)}
-                    </div>
-                  )}
-
-                  {interview.error_message && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                      {interview.error_message}
-                    </div>
-                  )}
-
-                  {interview.analysis_status === 'completed' && (
-                    <>
-                      <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-slate-600">Workflows:</span>{' '}
-                          <span className="font-semibold text-slate-900">
-                            {Array.isArray(interview.workflows) ? interview.workflows.length : 0}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Pain Points:</span>{' '}
-                          <span className="font-semibold text-slate-900">
-                            {Array.isArray(interview.pain_points) ? interview.pain_points.length : 0}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Tools:</span>{' '}
-                          <span className="font-semibold text-slate-900">
-                            {Array.isArray(interview.tools) ? interview.tools.length : 0}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Roles:</span>{' '}
-                          <span className="font-semibold text-slate-900">
-                            {Array.isArray(interview.roles) ? interview.roles.length : 0}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setSelectedInterview(interview)}
-                        className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Analysis
-                      </button>
-                    </>
                   )}
                 </div>
-              </div>
-            );
-            })}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredInterviews.map((interview) => {
+                    const isSelected = selectedInterviewIds.has(interview.id);
+                    const canSelect = interview.analysis_status === 'completed';
+
+                    return (
+                      <div
+                        key={interview.id}
+                        className={`bg-white rounded-xl border-2 p-6 hover:shadow-lg transition-all ${
+                          isSelected
+                            ? 'border-green-500 ring-2 ring-green-200'
+                            : 'border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3 flex-1">
+                            {canSelect && (
+                              <button
+                                onClick={() => handleToggleInterviewSelection(interview.id)}
+                                className="mt-0.5 text-slate-400 hover:text-green-600 transition-colors"
+                                title={isSelected ? 'Deselect for summary' : 'Select for summary'}
+                              >
+                                {isSelected ? (
+                                  <CheckSquare className="w-5 h-5 text-green-600" />
+                                ) : (
+                                  <Square className="w-5 h-5" />
+                                )}
+                              </button>
+                            )}
+                            <h3 className="font-semibold text-slate-900 flex-1 line-clamp-2">
+                              {interview.title}
+                            </h3>
+                          </div>
+                          <button
+                            onClick={() => handleDelete(interview.id)}
+                            className="ml-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete interview"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">Status:</span>
+                            {getStatusBadge(interview.analysis_status, interview.id)}
+                          </div>
+
+                          <div className="text-xs text-slate-500">
+                            Created {formatRelative(interview.created_at)}
+                          </div>
+
+                          {interview.analyzed_at && (
+                            <div className="text-xs text-slate-500">
+                              Analyzed {formatDate(interview.analyzed_at)}
+                            </div>
+                          )}
+
+                          {interview.error_message && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                              {interview.error_message}
+                            </div>
+                          )}
+
+                          {interview.analysis_status === 'completed' && (
+                            <>
+                              <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-slate-600">Workflows:</span>{' '}
+                                  <span className="font-semibold text-slate-900">
+                                    {Array.isArray(interview.workflows) ? interview.workflows.length : 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-600">Pain Points:</span>{' '}
+                                  <span className="font-semibold text-slate-900">
+                                    {Array.isArray(interview.pain_points) ? interview.pain_points.length : 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-600">Tools:</span>{' '}
+                                  <span className="font-semibold text-slate-900">
+                                    {Array.isArray(interview.tools) ? interview.tools.length : 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-600">Roles:</span>{' '}
+                                  <span className="font-semibold text-slate-900">
+                                    {Array.isArray(interview.roles) ? interview.roles.length : 0}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => setSelectedInterview(interview)}
+                                className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Analysis
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        ) : null}
+        )}
 
         {/* Company Summaries List */}
         {viewMode === 'summaries' && summariesLoading ? (
@@ -599,6 +686,17 @@ function App() {
           onBack={() => setSelectedSummary(null)}
         />
       )}
+
+      {/* Create/Edit Company Modal */}
+      <CreateCompanyModal
+        isOpen={showCompanyModal}
+        onClose={() => {
+          setShowCompanyModal(false);
+          setEditingCompany(null);
+        }}
+        onSubmit={editingCompany ? handleUpdateCompany : handleCreateCompany}
+        editingCompany={editingCompany}
+      />
     </div>
   );
 }

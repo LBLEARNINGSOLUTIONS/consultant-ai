@@ -33,10 +33,33 @@ export interface Database {
           role?: string;
         };
       };
+      companies: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string | null;
+          color: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          name: string;
+          description?: string | null;
+          color?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          color?: string;
+        };
+      };
       interviews: {
         Row: {
           id: string;
           user_id: string;
+          company_id: string | null;
           title: string;
           transcript_text: string;
           analysis_status: 'pending' | 'analyzing' | 'completed' | 'failed';
@@ -54,6 +77,7 @@ export interface Database {
         };
         Insert: {
           user_id: string;
+          company_id?: string | null;
           title: string;
           transcript_text: string;
           analysis_status?: 'pending' | 'analyzing' | 'completed' | 'failed';
@@ -68,6 +92,7 @@ export interface Database {
           analyzed_at?: string;
         };
         Update: {
+          company_id?: string | null;
           title?: string;
           transcript_text?: string;
           analysis_status?: 'pending' | 'analyzing' | 'completed' | 'failed';
@@ -139,10 +164,13 @@ export interface Database {
 
 // Convenience types
 export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Company = Database['public']['Tables']['companies']['Row'];
 export type Interview = Database['public']['Tables']['interviews']['Row'];
 export type CompanySummary = Database['public']['Tables']['company_summaries']['Row'];
 export type TranscriptFile = Database['public']['Tables']['transcript_files']['Row'];
 
+export type InsertCompany = Database['public']['Tables']['companies']['Insert'];
+export type UpdateCompany = Database['public']['Tables']['companies']['Update'];
 export type InsertInterview = Database['public']['Tables']['interviews']['Insert'];
 export type UpdateInterview = Database['public']['Tables']['interviews']['Update'];
 export type InsertCompanySummary = Database['public']['Tables']['company_summaries']['Insert'];
