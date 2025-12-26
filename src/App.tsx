@@ -8,9 +8,10 @@ import { AnalysisViewer } from './components/analysis/AnalysisViewer';
 import { CompanySummaryView } from './components/summary/CompanySummaryView';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary } from './types/database';
-import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square } from 'lucide-react';
+import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
+import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
 
 function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -33,7 +34,7 @@ function App() {
   const [showUpload, setShowUpload] = useState(false);
   const [analyzing, setAnalyzing] = useState<Set<string>>(new Set());
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
-  const [viewMode, setViewMode] = useState<'interviews' | 'summaries'>('interviews');
+  const [viewMode, setViewMode] = useState<'interviews' | 'summaries' | 'analytics'>('interviews');
   const [selectedInterviewIds, setSelectedInterviewIds] = useState<Set<string>>(new Set());
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState<CompanySummary | null>(null);
@@ -227,6 +228,17 @@ function App() {
               <span className="ml-2 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
                 {summaries.length}
               </span>
+            </button>
+            <button
+              onClick={() => setViewMode('analytics')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                viewMode === 'analytics'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <PieChart className="w-4 h-4 inline mr-2" />
+              Analytics
             </button>
           </div>
         </div>
@@ -532,6 +544,11 @@ function App() {
             })}
           </div>
         ) : null}
+
+        {/* Analytics Dashboard */}
+        {viewMode === 'analytics' && (
+          <AnalyticsDashboard interviews={interviews} loading={interviewsLoading} />
+        )}
 
         {/* Stats Summary */}
         {viewMode === 'interviews' && interviews.length > 0 && (
