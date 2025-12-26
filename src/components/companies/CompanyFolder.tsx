@@ -129,7 +129,6 @@ interface SpecialFolderProps {
   type: 'all' | 'unassigned';
   count: number;
   isSelected: boolean;
-  isDragOver?: boolean;
   onClick: () => void;
 }
 
@@ -137,18 +136,25 @@ export function SpecialFolder({
   type,
   count,
   isSelected,
-  isDragOver = false,
   onClick,
 }: SpecialFolderProps) {
   const isAll = type === 'all';
   const FolderIcon = isSelected ? FolderOpen : Folder;
 
+  // Only "Unassigned" is a drop target (to remove company assignment)
+  const { isOver, setNodeRef } = useDroppable({
+    id: type === 'unassigned' ? 'unassigned' : 'all-no-drop',
+    data: { companyId: null },
+    disabled: isAll, // "All" is not a drop target
+  });
+
   return (
     <div
+      ref={!isAll ? setNodeRef : undefined}
       className={`
         flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
         ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-100'}
-        ${isDragOver && !isAll ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50' : ''}
+        ${isOver && !isAll ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50 scale-105' : ''}
       `}
       onClick={onClick}
     >
