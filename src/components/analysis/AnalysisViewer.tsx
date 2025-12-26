@@ -13,6 +13,7 @@ import { PainPointsTab } from './PainPointsTab';
 import { ToolsAndRolesTab } from './ToolsAndRolesTab';
 import { X, FileText, Download } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatters';
+import { generateInterviewPDF, downloadPDF } from '../../services/pdfService';
 
 interface AnalysisViewerProps {
   interview: Interview;
@@ -24,6 +25,7 @@ type TabType = 'workflows' | 'painpoints' | 'tools';
 
 export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('workflows');
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   // Parse JSONB data
   const workflows = (interview.workflows as any as Workflow[]) || [];
@@ -54,6 +56,20 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true);
+    try {
+      const blob = await generateInterviewPDF(interview);
+      const filename = `${interview.title.replace(/\s+/g, '_')}_analysis.pdf`;
+      downloadPDF(blob, filename);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const tabs = [
     { id: 'workflows' as const, label: 'Workflows', count: workflows.length },
     { id: 'painpoints' as const, label: 'Pain Points', count: painPoints.length },
@@ -78,11 +94,21 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
 
             <div className="flex items-center gap-2 ml-4">
               <button
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="px-3 py-2 hover:bg-indigo-500 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export as PDF"
+              >
+                <Download className="w-4 h-4" />
+                {isExportingPDF ? 'Generating...' : 'PDF'}
+              </button>
+              <button
                 onClick={handleExportJSON}
-                className="p-2 hover:bg-indigo-500 rounded-lg transition-colors"
+                className="px-3 py-2 hover:bg-indigo-500 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
                 title="Export as JSON"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-4 h-4" />
+                JSON
               </button>
               <button
                 onClick={onClose}

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, X } from 'lucide-react';
+import { Upload, FileText, X, Type } from 'lucide-react';
 import { uploadMultipleTranscripts, UploadResult } from '../../services/uploadService';
 import { cn } from '../../utils/cn';
 
@@ -8,8 +8,13 @@ interface TranscriptUploadProps {
   maxFiles?: number;
 }
 
+type UploadMode = 'files' | 'paste';
+
 export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: TranscriptUploadProps) {
+  const [mode, setMode] = useState<UploadMode>('files');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [pastedText, setPastedText] = useState('');
+  const [transcriptTitle, setTranscriptTitle] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<Map<string, number>>(new Map());
   const [dragActive, setDragActive] = useState(false);
@@ -74,54 +79,174 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
     }
   };
 
+  const handlePasteUpload = async () => {
+    if (!pastedText.trim()) {
+      alert('Please paste a transcript first.');
+      return;
+    }
+
+    const title = transcriptTitle.trim() || `Pasted Transcript ${new Date().toLocaleDateString()}`;
+
+    setUploading(true);
+
+    try {
+      // Create a result object for pasted text
+      const result: UploadResult = {
+        fileId: `paste-${Date.now()}`,
+        filename: title,
+        text: pastedText,
+      };
+
+      onUploadComplete([result]);
+      setPastedText('');
+      setTranscriptTitle('');
+    } catch (error) {
+      console.error('Paste upload error:', error);
+      alert('Failed to process pasted transcript.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Drag & Drop Zone */}
-      <div
-        className={cn(
-          'border-2 border-dashed rounded-xl p-8 text-center transition-colors',
-          dragActive
-            ? 'border-indigo-500 bg-indigo-50'
-            : 'border-slate-300 bg-slate-50 hover:border-indigo-400'
-        )}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".txt"
-          onChange={handleFileInput}
-          className="hidden"
-        />
-
-        <div className="flex flex-col items-center gap-3">
-          <div className="bg-indigo-100 p-3 rounded-full">
-            <Upload className="w-6 h-6 text-indigo-600" />
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-slate-900">
-              Drop interview transcripts here or{' '}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-indigo-600 hover:text-indigo-700 font-semibold"
-              >
-                browse
-              </button>
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Supports .txt files up to 10MB • Max {maxFiles} files
-            </p>
-          </div>
+      {/* Mode Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex space-x-4 -mb-px">
+          <button
+            onClick={() => setMode('files')}
+            className={cn(
+              'py-3 px-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
+              mode === 'files'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            )}
+          >
+            <Upload className="w-4 h-4" />
+            Upload Files
+          </button>
+          <button
+            onClick={() => setMode('paste')}
+            className={cn(
+              'py-3 px-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
+              mode === 'paste'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            )}
+          >
+            <Type className="w-4 h-4" />
+            Paste Text
+          </button>
         </div>
       </div>
 
+      {/* File Upload Mode */}
+      {mode === 'files' && (
+        <>
+          {/* Drag & Drop Zone */}
+          <div
+            className={cn(
+              'border-2 border-dashed rounded-xl p-8 text-center transition-colors',
+              dragActive
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-slate-300 bg-slate-50 hover:border-indigo-400'
+            )}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt"
+              onChange={handleFileInput}
+              className="hidden"
+            />
+
+            <div className="flex flex-col items-center gap-3">
+              <div className="bg-indigo-100 p-3 rounded-full">
+                <Upload className="w-6 h-6 text-indigo-600" />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  Drop interview transcripts here or{' '}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-indigo-600 hover:text-indigo-700 font-semibold"
+                  >
+                    browse
+                  </button>
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Supports .txt files up to 10MB • Max {maxFiles} files
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Paste Text Mode */}
+      {mode === 'paste' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="space-y-4">
+            {/* Title Input */}
+            <div>
+              <label htmlFor="transcript-title" className="block text-sm font-medium text-slate-700 mb-2">
+                Interview Title (Optional)
+              </label>
+              <input
+                id="transcript-title"
+                type="text"
+                value={transcriptTitle}
+                onChange={(e) => setTranscriptTitle(e.target.value)}
+                placeholder="e.g., Interview with Sarah - Customer Success"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                disabled={uploading}
+              />
+            </div>
+
+            {/* Text Area */}
+            <div>
+              <label htmlFor="transcript-text" className="block text-sm font-medium text-slate-700 mb-2">
+                Paste Transcript
+              </label>
+              <textarea
+                id="transcript-text"
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste your interview transcript here..."
+                rows={12}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm resize-y"
+                disabled={uploading}
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                {pastedText.length > 0 ? `${pastedText.length.toLocaleString()} characters` : 'Minimum 100 characters recommended'}
+              </p>
+            </div>
+
+            {/* Upload Button */}
+            <button
+              onClick={handlePasteUpload}
+              disabled={uploading || pastedText.trim().length === 0}
+              className={cn(
+                'w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors',
+                uploading || pastedText.trim().length === 0
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              )}
+            >
+              {uploading ? 'Processing...' : 'Analyze Transcript'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Selected Files List */}
-      {selectedFiles.length > 0 && (
+      {mode === 'files' && selectedFiles.length > 0 && (
         <div className="bg-white rounded-lg border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-900">

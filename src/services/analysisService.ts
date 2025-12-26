@@ -109,7 +109,13 @@ export async function analyzeTranscript(
       messages: [
         {
           role: 'user',
-          content: `Analyze this interview transcript and extract structured insights:\n\n${transcript}`,
+          content: `Analyze this interview transcript and extract structured insights.
+
+CRITICAL: You MUST respond with ONLY valid JSON. Do not include any explanatory text before or after the JSON. Start your response with { and end with }.
+
+Interview transcript:
+
+${transcript}`,
         },
       ],
     });
@@ -121,13 +127,36 @@ export async function analyzeTranscript(
 
     // Extract JSON from response (Claude sometimes wraps it in markdown)
     let jsonText = content.text.trim();
+
+    // Log the raw response for debugging
+    console.log('=== RAW CLAUDE RESPONSE ===');
+    console.log('Full response:', jsonText);
+    console.log('First 500 chars:', jsonText.substring(0, 500));
+    console.log('=========================');
+
+    // Remove markdown code blocks if present
     if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+      jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
     } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
+      jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
     }
 
-    const analysis = JSON.parse(jsonText) as InterviewAnalysis;
+    // Try to find JSON object if there's extra text
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[0];
+    }
+
+    console.log('Cleaned JSON text (first 500 chars):', jsonText.substring(0, 500));
+
+    let analysis: InterviewAnalysis;
+    try {
+      analysis = JSON.parse(jsonText) as InterviewAnalysis;
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Failed to parse this text:', jsonText);
+      throw new Error(`JSON parsing failed: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
 
     // Validate and ensure IDs exist
     analysis.workflows = analysis.workflows.map(w => ({ ...w, id: w.id || nanoid() }));

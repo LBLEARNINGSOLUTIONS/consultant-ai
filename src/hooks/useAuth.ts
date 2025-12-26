@@ -43,10 +43,23 @@ export function useAuth() {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile fetch error:', error);
+        // If profile doesn't exist, create a basic one or set loading to false
+        if (error.code === 'PGRST116') {
+          // No rows returned - profile doesn't exist
+          console.log('No profile found, setting loading to false');
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      // Even if there's an error, we should stop loading
+      setProfile(null);
     } finally {
       setLoading(false);
     }
