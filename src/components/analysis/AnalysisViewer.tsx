@@ -149,6 +149,7 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
               workflows={workflows}
               handoffRisks={handoffRisks}
               onUpdateWorkflows={(updated) => onUpdate({ workflows: updated as any })}
+              onUpdateHandoffRisks={(updated) => onUpdate({ handoff_risks: updated as any })}
             />
           )}
 
