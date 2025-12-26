@@ -43,11 +43,11 @@ export function CompanyFolder({
 
   return (
     <div
+      ref={setNodeRef}
       className={`
         group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
         ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-100'}
-        ${isDragOver ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50' : ''}
-        ${isDropTarget && !isDragOver ? 'hover:ring-2 hover:ring-indigo-300' : ''}
+        ${isOver ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50 scale-105' : ''}
       `}
       onClick={onClick}
     >
