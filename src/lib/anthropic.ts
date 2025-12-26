@@ -22,5 +22,5 @@ export const CLAUDE_MODELS = {
 } as const;
 
 export const DEFAULT_MODEL = CLAUDE_MODELS.SONNET;
-export const MAX_TOKENS = 4096;
+export const MAX_TOKENS = 8192;
 export const DEFAULT_TEMPERATURE = 0.3;
