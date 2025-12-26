@@ -1,13 +1,12 @@
 import { Folder, FolderOpen, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { Company } from '../../types/database';
 
 interface CompanyFolderProps {
   company: Company;
   count: number;
   isSelected: boolean;
-  isDropTarget?: boolean;
-  isDragOver?: boolean;
   onClick: () => void;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
@@ -17,14 +16,17 @@ export function CompanyFolder({
   company,
   count,
   isSelected,
-  isDropTarget = false,
-  isDragOver = false,
   onClick,
   onEdit,
   onDelete,
 }: CompanyFolderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const { isOver, setNodeRef } = useDroppable({
+    id: `company-${company.id}`,
+    data: { companyId: company.id },
+  });
 
   // Close menu when clicking outside
   useEffect(() => {
