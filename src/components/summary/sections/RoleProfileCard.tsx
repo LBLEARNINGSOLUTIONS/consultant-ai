@@ -1,13 +1,16 @@
-import { Users, AlertTriangle, GraduationCap, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Users, AlertTriangle, GraduationCap, ArrowRight, ArrowLeft, Edit2, Trash2 } from 'lucide-react';
 import { RoleProfile } from '../../../types/analysis';
 import { Badge } from '../../analysis/Badge';
 
 interface RoleProfileCardProps {
   profile: RoleProfile;
   onClick?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  canEdit?: boolean;
 }
 
-export function RoleProfileCard({ profile, onClick }: RoleProfileCardProps) {
+export function RoleProfileCard({ profile, onClick, onEdit, onDelete, canEdit }: RoleProfileCardProps) {
   const hasIssues = profile.issuesDetected.length > 0;
   const hasTrainingNeeds = profile.trainingNeeds.length > 0;
   const hasDependencies = profile.inputsFrom.length > 0 || profile.outputsTo.length > 0;
@@ -22,10 +25,20 @@ export function RoleProfileCard({ profile, onClick }: RoleProfileCardProps) {
     need => need.priority === 'high'
   ).length;
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.();
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+  };
+
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border border-slate-200 p-4 hover:border-purple-300 hover:shadow-md transition-all ${onClick ? 'cursor-pointer' : ''}`}
+      className={`bg-white rounded-xl border border-slate-200 p-4 hover:border-purple-300 hover:shadow-md transition-all group ${onClick ? 'cursor-pointer' : ''}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -42,6 +55,25 @@ export function RoleProfileCard({ profile, onClick }: RoleProfileCardProps) {
             </p>
           </div>
         </div>
+        {/* Edit/Delete buttons */}
+        {canEdit && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={handleEditClick}
+              className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="Edit role"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Delete role"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Responsibilities preview */}
