@@ -32,6 +32,15 @@ interface CompanyContext {
   projectGoals?: string;
 }
 
+interface ExecutiveSummary {
+  narrativeSummary?: string;
+  keyFindings?: string[];
+  topRisks?: Array<{ id: string; text: string; rank: number }>;
+  topOpportunities?: Array<{ id: string; text: string; rank: number }>;
+  maturityLevel?: 1 | 2 | 3 | 4 | 5;
+  maturityNotes?: string;
+}
+
 export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onViewInterview }: CompanySummaryViewProps) {
   const data = summary.summary_data as unknown as CompanySummaryData;
   const { addToast } = useToast();
@@ -50,6 +59,9 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const [roleDistribution, setRoleDistribution] = useState(data.roleDistribution || {});
   const [companyContext, setCompanyContext] = useState<CompanyContext>(
     (data as unknown as { companyContext?: CompanyContext }).companyContext || {}
+  );
+  const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummary>(
+    (data as unknown as { executiveSummary?: ExecutiveSummary }).executiveSummary || {}
   );
 
   // Generic save function
@@ -108,14 +120,23 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     if (!result.error) setCompanyContext(newContext);
   };
 
+  const handleUpdateExecutiveSummary = async (newExecSummary: ExecutiveSummary) => {
+    const result = await saveData({ executiveSummary: newExecSummary } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setExecutiveSummary(newExecSummary);
+  };
+
   // Render active section
   const renderSection = () => {
     switch (activeSection) {
       case 'executive':
         return (
           <ExecutiveSummarySection
-            data={{ ...data, topWorkflows: workflows, criticalPainPoints: painPoints, commonTools: tools }}
+            data={{ ...data, topWorkflows: workflows, criticalPainPoints: painPoints, commonTools: tools, highRiskHandoffs: handoffs }}
+            companyName={summary.title}
+            auditDate={summary.created_at}
+            executiveSummary={executiveSummary}
             recommendations={recommendations}
+            onUpdate={onUpdate ? handleUpdateExecutiveSummary : undefined}
           />
         );
 

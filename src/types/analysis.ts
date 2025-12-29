@@ -128,6 +128,16 @@ export interface CompanySummaryData {
     text: string;
     priority: 'high' | 'medium' | 'low';
   }>;
+
+  // Executive Summary (editable)
+  executiveSummary?: {
+    narrativeSummary?: string; // 3-5 paragraph narrative
+    keyFindings?: string[]; // Bullet highlights
+    topRisks?: Array<{ id: string; text: string; rank: number }>; // Top 5 risks ranked
+    topOpportunities?: Array<{ id: string; text: string; rank: number }>; // Top 5 opportunities ranked
+    maturityLevel?: 1 | 2 | 3 | 4 | 5; // Readiness/maturity scale
+    maturityNotes?: string; // Notes about the maturity assessment
+  };
 }
 
 // Claude API response structure
