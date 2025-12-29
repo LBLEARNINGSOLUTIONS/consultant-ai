@@ -1,15 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { DndContext, DragEndEvent, useDraggable } from '@dnd-kit/core';
 import { useAuth } from './hooks/useAuth';
 import { useInterviews } from './hooks/useInterviews';
 import { useCompanySummary } from './hooks/useCompanySummary';
 import { useCompanies } from './hooks/useCompanies';
+import { useInterviewFilters } from './hooks/useInterviewFilters';
 import { Login } from './components/auth/Login';
 import { TranscriptUpload } from './components/upload/TranscriptUpload';
 import { AnalysisViewer } from './components/analysis/AnalysisViewer';
 import { CompanySummaryView } from './components/summary/CompanySummaryView';
 import { CompanySidebar, CompanyFilter } from './components/companies/CompanySidebar';
 import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
+import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
 import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical } from 'lucide-react';
@@ -82,6 +84,24 @@ function App() {
   const [selectedInterviewIds, setSelectedInterviewIds] = useState<Set<string>>(new Set());
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState<CompanySummary | null>(null);
+
+  // Filter interviews by selected company and search/filters - must be before early returns to maintain hooks order
+  const {
+    filters,
+    filteredInterviews,
+    setSearchQuery,
+    setStatuses,
+    setDateRange,
+    setSeverities,
+    setTools,
+    clearAllFilters,
+    clearFilter,
+    availableTools,
+    hasActiveFilters,
+  } = useInterviewFilters({
+    interviews,
+    companyFilter: selectedCompanyFilter,
+  });
 
   // Debug logging
   console.log('App render:', { authLoading, user: user?.email, profile: profile?.name });
@@ -209,17 +229,6 @@ function App() {
       await deleteSummary(id);
     }
   };
-
-  // Filter interviews by selected company
-  const filteredInterviews = useMemo(() => {
-    if (selectedCompanyFilter === null) {
-      return interviews; // Show all
-    } else if (selectedCompanyFilter === 'unassigned') {
-      return interviews.filter(i => !i.company_id);
-    } else {
-      return interviews.filter(i => i.company_id === selectedCompanyFilter);
-    }
-  }, [interviews, selectedCompanyFilter]);
 
   // Company handlers
   const handleCreateCompany = async (name: string, color: string, description?: string) => {
@@ -436,7 +445,23 @@ function App() {
               />
 
               {/* Interviews Grid */}
-              <div className="flex-1">
+              <div className="flex-1 space-y-4">
+                {/* Search and Filter Bar */}
+                <InterviewSearchBar
+                  filters={filters}
+                  onSearchChange={setSearchQuery}
+                  onStatusChange={setStatuses}
+                  onDateRangeChange={setDateRange}
+                  onSeverityChange={setSeverities}
+                  onToolsChange={setTools}
+                  onClearAll={clearAllFilters}
+                  onClearFilter={clearFilter}
+                  availableTools={availableTools}
+                  hasActiveFilters={hasActiveFilters}
+                  resultCount={filteredInterviews.length}
+                  totalCount={interviews.length}
+                />
+
                 {interviewsLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map(i => (
