@@ -665,7 +665,7 @@ export function buildRoleProfiles(interviews: Interview[]): RoleProfile[] {
   // Build role profiles with all the cross-referenced data
   const roleProfiles: RoleProfile[] = [];
 
-  roleMap.forEach((data, key) => {
+  roleMap.forEach((data) => {
     const normalizedTitle = data.title.toLowerCase();
 
     // Build inputsFrom (handoffs where this role receives)
