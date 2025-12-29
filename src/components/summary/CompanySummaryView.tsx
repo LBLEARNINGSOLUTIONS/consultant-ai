@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { CompanySummaryData } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
 import { useAnalyticsDashboard } from '../../hooks/useAnalyticsDashboard';
+import { buildRoleProfiles } from '../../utils/analysisHelpers';
 import { SummaryNav, SectionId } from './SummaryNav';
 import { ExecutiveSummarySection } from './sections/ExecutiveSummarySection';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
@@ -48,6 +49,9 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
 
   // Analytics data from interviews
   const { metrics } = useAnalyticsDashboard(interviews);
+
+  // Build role profiles from interview data
+  const roleProfiles = useMemo(() => buildRoleProfiles(interviews), [interviews]);
 
   // Local state for editable sections
   const [workflows, setWorkflows] = useState(data.topWorkflows || []);
@@ -154,6 +158,7 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
         return (
           <RolesSection
             roleDistribution={roleDistribution}
+            roleProfiles={roleProfiles}
             onUpdate={onUpdate ? handleUpdateRoleDistribution : undefined}
           />
         );

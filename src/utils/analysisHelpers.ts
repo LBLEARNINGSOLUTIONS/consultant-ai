@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -587,4 +587,176 @@ export function mergeAnalysisData(interviews: Interview[]): InterviewAnalysis {
     handoffRisks: Array.from(handoffMap.values()),
     recommendations: [], // Merged analysis doesn't aggregate recommendations - they come from company summary
   };
+}
+
+/**
+ * Build comprehensive role profiles from interview data
+ * Aggregates roles with their dependencies, issues, and training needs
+ */
+export function buildRoleProfiles(interviews: Interview[]): RoleProfile[] {
+  const completedInterviews = interviews.filter(i => i.analysis_status === 'completed');
+
+  // First, aggregate basic role data
+  const roleMap = new Map<string, {
+    title: string;
+    count: number;
+    responsibilities: Set<string>;
+    workflows: Set<string>;
+    tools: Set<string>;
+    interviewIds: string[];
+  }>();
+
+  // Collect all handoffs, pain points, and training gaps
+  const allHandoffs: Array<{ fromRole: string; toRole: string; process: string }> = [];
+  const allPainPoints: Array<{ description: string; severity: string; affectedRoles: string[] }> = [];
+  const allTrainingGaps: Array<{ area: string; priority: string; affectedRoles: string[] }> = [];
+
+  completedInterviews.forEach(interview => {
+    // Process roles
+    const roles = (interview.roles as unknown as Role[]) || [];
+    roles.forEach(role => {
+      const key = role.title.toLowerCase();
+      const existing = roleMap.get(key);
+      if (existing) {
+        existing.count++;
+        role.responsibilities.forEach(r => existing.responsibilities.add(r));
+        role.workflows.forEach(w => existing.workflows.add(w));
+        role.tools.forEach(t => existing.tools.add(t));
+        existing.interviewIds.push(interview.id);
+      } else {
+        roleMap.set(key, {
+          title: role.title,
+          count: 1,
+          responsibilities: new Set(role.responsibilities),
+          workflows: new Set(role.workflows),
+          tools: new Set(role.tools),
+          interviewIds: [interview.id],
+        });
+      }
+    });
+
+    // Collect handoffs
+    const handoffs = (interview.handoff_risks as unknown as HandoffRisk[]) || [];
+    handoffs.forEach(h => {
+      allHandoffs.push({ fromRole: h.fromRole, toRole: h.toRole, process: h.process });
+    });
+
+    // Collect pain points
+    const painPoints = (interview.pain_points as unknown as PainPoint[]) || [];
+    painPoints.forEach(pp => {
+      allPainPoints.push({
+        description: pp.description,
+        severity: pp.severity,
+        affectedRoles: pp.affectedRoles,
+      });
+    });
+
+    // Collect training gaps
+    const trainingGaps = (interview.training_gaps as unknown as TrainingGap[]) || [];
+    trainingGaps.forEach(tg => {
+      allTrainingGaps.push({
+        area: tg.area,
+        priority: tg.priority,
+        affectedRoles: tg.affectedRoles,
+      });
+    });
+  });
+
+  // Build role profiles with all the cross-referenced data
+  const roleProfiles: RoleProfile[] = [];
+
+  roleMap.forEach((data, key) => {
+    const normalizedTitle = data.title.toLowerCase();
+
+    // Build inputsFrom (handoffs where this role receives)
+    const inputsFromMap = new Map<string, { role: string; process: string; count: number }>();
+    allHandoffs.forEach(h => {
+      if (h.toRole.toLowerCase() === normalizedTitle) {
+        const hKey = `${h.fromRole.toLowerCase()}-${h.process.toLowerCase()}`;
+        const existing = inputsFromMap.get(hKey);
+        if (existing) {
+          existing.count++;
+        } else {
+          inputsFromMap.set(hKey, { role: h.fromRole, process: h.process, count: 1 });
+        }
+      }
+    });
+
+    // Build outputsTo (handoffs where this role sends)
+    const outputsToMap = new Map<string, { role: string; process: string; count: number }>();
+    allHandoffs.forEach(h => {
+      if (h.fromRole.toLowerCase() === normalizedTitle) {
+        const hKey = `${h.toRole.toLowerCase()}-${h.process.toLowerCase()}`;
+        const existing = outputsToMap.get(hKey);
+        if (existing) {
+          existing.count++;
+        } else {
+          outputsToMap.set(hKey, { role: h.toRole, process: h.process, count: 1 });
+        }
+      }
+    });
+
+    // Build issues detected (pain points affecting this role)
+    const issuesMap = new Map<string, { description: string; severity: string; count: number }>();
+    allPainPoints.forEach(pp => {
+      const affectsRole = pp.affectedRoles.some(r => r.toLowerCase() === normalizedTitle);
+      if (affectsRole) {
+        const iKey = pp.description.toLowerCase().slice(0, 50);
+        const existing = issuesMap.get(iKey);
+        if (existing) {
+          existing.count++;
+          // Keep highest severity
+          const severityOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+          if ((severityOrder[pp.severity] || 0) > (severityOrder[existing.severity] || 0)) {
+            existing.severity = pp.severity;
+          }
+        } else {
+          issuesMap.set(iKey, { description: pp.description, severity: pp.severity, count: 1 });
+        }
+      }
+    });
+
+    // Build training needs (training gaps affecting this role)
+    const trainingMap = new Map<string, { area: string; priority: string; count: number }>();
+    allTrainingGaps.forEach(tg => {
+      const affectsRole = tg.affectedRoles.some(r => r.toLowerCase() === normalizedTitle);
+      if (affectsRole) {
+        const tKey = tg.area.toLowerCase();
+        const existing = trainingMap.get(tKey);
+        if (existing) {
+          existing.count++;
+          // Keep highest priority
+          const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+          if ((priorityOrder[tg.priority] || 0) > (priorityOrder[existing.priority] || 0)) {
+            existing.priority = tg.priority;
+          }
+        } else {
+          trainingMap.set(tKey, { area: tg.area, priority: tg.priority, count: 1 });
+        }
+      }
+    });
+
+    roleProfiles.push({
+      id: nanoid(),
+      title: data.title,
+      count: data.count,
+      responsibilities: Array.from(data.responsibilities),
+      workflows: Array.from(data.workflows),
+      tools: Array.from(data.tools),
+      inputsFrom: Array.from(inputsFromMap.values()).sort((a, b) => b.count - a.count),
+      outputsTo: Array.from(outputsToMap.values()).sort((a, b) => b.count - a.count),
+      issuesDetected: Array.from(issuesMap.values()).sort((a, b) => {
+        const severityOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+        return (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
+      }),
+      trainingNeeds: Array.from(trainingMap.values()).sort((a, b) => {
+        const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      }),
+      interviewIds: data.interviewIds,
+    });
+  });
+
+  // Sort by count descending
+  return roleProfiles.sort((a, b) => b.count - a.count);
 }
