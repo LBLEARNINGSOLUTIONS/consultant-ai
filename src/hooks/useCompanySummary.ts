@@ -137,6 +137,7 @@ export function useCompanySummary(userId?: string) {
         roles: (interview.roles as any) || [],
         trainingGaps: (interview.training_gaps as any) || [],
         handoffRisks: (interview.handoff_risks as any) || [],
+        recommendations: (interview as any).recommendations || [],
       }));
 
       const dates = selectedInterviews.map(i => i.created_at);

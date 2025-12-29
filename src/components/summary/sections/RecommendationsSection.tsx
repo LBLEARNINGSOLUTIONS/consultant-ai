@@ -77,7 +77,7 @@ export function RecommendationsSection({ recommendations, onUpdate }: Recommenda
             Recommendations & Roadmap
           </h2>
           <p className="text-slate-600">
-            {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} for improvement.
+            {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} for improvement, generated from interview analysis.
           </p>
         </div>
         {onUpdate && !isAdding && (
@@ -139,9 +139,10 @@ export function RecommendationsSection({ recommendations, onUpdate }: Recommenda
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <Lightbulb className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           <p className="text-slate-500">No recommendations yet.</p>
-          {onUpdate && (
-            <p className="text-sm text-slate-400 mt-1">Add your first recommendation to get started.</p>
-          )}
+          <p className="text-sm text-slate-400 mt-1">
+            Recommendations will be auto-generated when interviews are analyzed.
+            {onUpdate && ' You can also add recommendations manually.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-6">

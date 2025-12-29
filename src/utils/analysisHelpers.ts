@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, Recommendation, CompanySummaryData } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -119,6 +119,95 @@ export function aggregateAnalyses(analyses: InterviewAnalysis[], dates: string[]
     .sort((a, b) => b.occurrences - a.occurrences)
     .slice(0, 10);
 
+  // Aggregate recommendations from all analyses
+  const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+  const recommendationMap = new Map<string, {
+    id: string;
+    text: string;
+    priority: 'high' | 'medium' | 'low';
+    category?: string;
+    count: number
+  }>();
+
+  analyses.forEach(analysis => {
+    // From dedicated recommendations field (new analyses)
+    (analysis.recommendations || []).forEach(rec => {
+      const key = rec.text.toLowerCase().slice(0, 50);
+      const existing = recommendationMap.get(key);
+      if (existing) {
+        existing.count++;
+        // Keep highest priority
+        if ((priorityOrder[rec.priority] || 0) > (priorityOrder[existing.priority] || 0)) {
+          existing.priority = rec.priority;
+        }
+      } else {
+        recommendationMap.set(key, {
+          id: rec.id || nanoid(),
+          text: rec.text,
+          priority: rec.priority,
+          category: rec.category,
+          count: 1
+        });
+      }
+    });
+
+    // Fallback: Extract from suggestion fields (for older analyses without recommendations)
+    analysis.painPoints.forEach(pp => {
+      if (pp.suggestedSolution) {
+        const key = pp.suggestedSolution.toLowerCase().slice(0, 50);
+        if (!recommendationMap.has(key)) {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: pp.suggestedSolution,
+            priority: pp.severity === 'critical' ? 'high' : pp.severity === 'high' ? 'high' : 'medium',
+            category: 'process',
+            count: 1
+          });
+        }
+      }
+    });
+
+    analysis.trainingGaps.forEach(gap => {
+      if (gap.suggestedTraining) {
+        const key = gap.suggestedTraining.toLowerCase().slice(0, 50);
+        if (!recommendationMap.has(key)) {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: gap.suggestedTraining,
+            priority: gap.priority,
+            category: 'training',
+            count: 1
+          });
+        }
+      }
+    });
+
+    analysis.handoffRisks.forEach(handoff => {
+      if (handoff.mitigation) {
+        const key = handoff.mitigation.toLowerCase().slice(0, 50);
+        if (!recommendationMap.has(key)) {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: handoff.mitigation,
+            priority: handoff.riskLevel === 'high' ? 'high' : 'medium',
+            category: 'risk-mitigation',
+            count: 1
+          });
+        }
+      }
+    });
+  });
+
+  // Convert to array and sort by priority then count
+  const recommendations = Array.from(recommendationMap.values())
+    .sort((a, b) => {
+      const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      return b.count - a.count;
+    })
+    .slice(0, 15)
+    .map(({ id, text, priority }) => ({ id, text, priority }));
+
   return {
     totalInterviews: analyses.length,
     dateRange: {
@@ -130,7 +219,8 @@ export function aggregateAnalyses(analyses: InterviewAnalysis[], dates: string[]
     commonTools,
     roleDistribution,
     priorityTrainingGaps,
-    highRiskHandoffs
+    highRiskHandoffs,
+    recommendations
   };
 }
 
@@ -495,5 +585,6 @@ export function mergeAnalysisData(interviews: Interview[]): InterviewAnalysis {
     roles: Array.from(roleMap.values()),
     trainingGaps: Array.from(trainingGapMap.values()),
     handoffRisks: Array.from(handoffMap.values()),
+    recommendations: [], // Merged analysis doesn't aggregate recommendations - they come from company summary
   };
 }
