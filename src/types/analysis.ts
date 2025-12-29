@@ -60,6 +60,14 @@ export interface HandoffRisk {
   mitigation?: string;
 }
 
+export interface Recommendation {
+  id: string;
+  text: string;
+  priority: 'high' | 'medium' | 'low';
+  category: 'process' | 'training' | 'technology' | 'organization' | 'risk-mitigation';
+  source?: string; // e.g., "pain point", "training gap", "handoff risk"
+}
+
 // Complete analysis structure
 export interface InterviewAnalysis {
   workflows: Workflow[];
@@ -68,6 +76,7 @@ export interface InterviewAnalysis {
   roles: Role[];
   trainingGaps: TrainingGap[];
   handoffRisks: HandoffRisk[];
+  recommendations: Recommendation[];
 }
 
 // Company-wide aggregated summary
