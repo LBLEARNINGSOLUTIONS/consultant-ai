@@ -14,7 +14,6 @@ interface CompanySidebarProps {
   onCreateCompany: () => void;
   onEditCompany: (company: Company) => void;
   onDeleteCompany: (company: Company) => void;
-  dragOverCompanyId?: string | null;
 }
 
 export function CompanySidebar({
@@ -25,26 +24,27 @@ export function CompanySidebar({
   onCreateCompany,
   onEditCompany,
   onDeleteCompany,
-  dragOverCompanyId,
 }: CompanySidebarProps) {
   // Calculate interview counts per company
   const interviewCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    let unassignedCount = 0;
+    const counts: Record<string, number> = {
+      unassigned: 0,
+      total: interviews.length,
+    };
 
     interviews.forEach((interview) => {
       if (interview.company_id) {
         counts[interview.company_id] = (counts[interview.company_id] || 0) + 1;
       } else {
-        unassignedCount++;
+        counts.unassigned++;
       }
     });
 
-    return { ...counts, unassigned: unassignedCount, total: interviews.length };
+    return counts;
   }, [interviews]);
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col h-full">
+    <aside className="w-64 bg-white border border-slate-200 rounded-xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-slate-200">
         <button
@@ -71,7 +71,6 @@ export function CompanySidebar({
           type="unassigned"
           count={interviewCounts.unassigned}
           isSelected={selectedFilter === 'unassigned'}
-          isDragOver={dragOverCompanyId === 'unassigned'}
           onClick={() => onSelectFilter('unassigned')}
         />
 
@@ -89,8 +88,6 @@ export function CompanySidebar({
             company={company}
             count={interviewCounts[company.id] || 0}
             isSelected={selectedFilter === company.id}
-            isDropTarget={true}
-            isDragOver={dragOverCompanyId === company.id}
             onClick={() => onSelectFilter(company.id)}
             onEdit={onEditCompany}
             onDelete={onDeleteCompany}
