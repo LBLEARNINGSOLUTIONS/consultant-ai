@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, AlertTriangle, TrendingUp, Lightbulb, Edit2, Check, X, Plus, Trash2, GripVertical } from 'lucide-react';
+import { FileText, AlertTriangle, TrendingUp, Lightbulb, Edit2, Plus, Trash2 } from 'lucide-react';
 import { CompanySummaryData } from '../../../types/analysis';
 import { formatDate } from '../../../utils/dateFormatters';
 import { nanoid } from 'nanoid';

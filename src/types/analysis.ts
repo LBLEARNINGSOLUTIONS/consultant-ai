@@ -79,6 +79,29 @@ export interface InterviewAnalysis {
   recommendations: Recommendation[];
 }
 
+// Role Profile for detailed role view
+export interface RoleProfile {
+  id: string;
+  title: string;
+  count: number;  // How many interviews mentioned this role
+
+  // Core data
+  responsibilities: string[];
+  workflows: string[];
+  tools: string[];
+
+  // Dependencies (derived from HandoffRisks)
+  inputsFrom: Array<{ role: string; process: string; count: number }>;  // Who hands off to this role
+  outputsTo: Array<{ role: string; process: string; count: number }>;   // Who this role hands off to
+
+  // Issues and gaps (filtered by role)
+  issuesDetected: Array<{ description: string; severity: string; count: number }>;
+  trainingNeeds: Array<{ area: string; priority: string; count: number }>;
+
+  // Traceability
+  interviewIds: string[];
+}
+
 // Company-wide aggregated summary
 export interface CompanySummaryData {
   totalInterviews: number;
