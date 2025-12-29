@@ -1,5 +1,6 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, CompanySummaryData } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData } from '../types/analysis';
 import { Interview } from '../types/database';
+import { nanoid } from 'nanoid';
 import {
   DashboardMetrics,
   WorkflowAggregation,
@@ -354,5 +355,145 @@ export function calculateDashboardMetrics(interviews: Interview[]): DashboardMet
     workflowsByFrequency,
     trainingGapsByPriority,
     handoffRisksByLevel,
+  };
+}
+
+/**
+ * Merge multiple interviews' analysis data into a single combined analysis
+ * Returns full analysis arrays (not aggregated summaries)
+ */
+export function mergeAnalysisData(interviews: Interview[]): InterviewAnalysis {
+  const frequencyOrder: Record<string, number> = { daily: 4, weekly: 3, monthly: 2, 'ad-hoc': 1 };
+  const severityOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+  const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+  const riskOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+
+  // Merge workflows - group by name, merge arrays, keep highest frequency
+  const workflowMap = new Map<string, Workflow>();
+  interviews.forEach(interview => {
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
+    workflows.forEach(workflow => {
+      const key = workflow.name.toLowerCase();
+      const existing = workflowMap.get(key);
+      if (existing) {
+        existing.steps = [...new Set([...existing.steps, ...workflow.steps])];
+        existing.participants = [...new Set([...existing.participants, ...workflow.participants])];
+        if ((frequencyOrder[workflow.frequency] || 0) > (frequencyOrder[existing.frequency] || 0)) {
+          existing.frequency = workflow.frequency;
+        }
+        if (workflow.duration && !existing.duration) existing.duration = workflow.duration;
+        if (workflow.notes) existing.notes = existing.notes ? `${existing.notes}; ${workflow.notes}` : workflow.notes;
+      } else {
+        workflowMap.set(key, { ...workflow, id: nanoid() });
+      }
+    });
+  });
+
+  // Merge pain points - group by description, keep highest severity
+  const painPointMap = new Map<string, PainPoint>();
+  interviews.forEach(interview => {
+    const painPoints = (interview.pain_points as unknown as PainPoint[]) || [];
+    painPoints.forEach(pp => {
+      const key = pp.description.toLowerCase().slice(0, 100);
+      const existing = painPointMap.get(key);
+      if (existing) {
+        existing.affectedRoles = [...new Set([...existing.affectedRoles, ...pp.affectedRoles])];
+        if ((severityOrder[pp.severity] || 0) > (severityOrder[existing.severity] || 0)) {
+          existing.severity = pp.severity;
+        }
+        if (pp.suggestedSolution && !existing.suggestedSolution) {
+          existing.suggestedSolution = pp.suggestedSolution;
+        }
+      } else {
+        painPointMap.set(key, { ...pp, id: nanoid() });
+      }
+    });
+  });
+
+  // Merge tools - group by name, merge usedBy and integrations
+  const toolMap = new Map<string, Tool>();
+  interviews.forEach(interview => {
+    const tools = (interview.tools as unknown as Tool[]) || [];
+    tools.forEach(tool => {
+      const key = tool.name.toLowerCase();
+      const existing = toolMap.get(key);
+      if (existing) {
+        existing.usedBy = [...new Set([...existing.usedBy, ...tool.usedBy])];
+        if (tool.integrations) {
+          existing.integrations = [...new Set([...(existing.integrations || []), ...tool.integrations])];
+        }
+        if (tool.limitations && !existing.limitations) existing.limitations = tool.limitations;
+      } else {
+        toolMap.set(key, { ...tool, id: nanoid() });
+      }
+    });
+  });
+
+  // Merge roles - group by title, merge responsibilities/workflows/tools
+  const roleMap = new Map<string, Role>();
+  interviews.forEach(interview => {
+    const roles = (interview.roles as unknown as Role[]) || [];
+    roles.forEach(role => {
+      const key = role.title.toLowerCase();
+      const existing = roleMap.get(key);
+      if (existing) {
+        existing.responsibilities = [...new Set([...existing.responsibilities, ...role.responsibilities])];
+        existing.workflows = [...new Set([...existing.workflows, ...role.workflows])];
+        existing.tools = [...new Set([...existing.tools, ...role.tools])];
+        if (role.teamSize && (!existing.teamSize || role.teamSize > existing.teamSize)) {
+          existing.teamSize = role.teamSize;
+        }
+      } else {
+        roleMap.set(key, { ...role, id: nanoid() });
+      }
+    });
+  });
+
+  // Merge training gaps - group by area, keep highest priority
+  const trainingGapMap = new Map<string, TrainingGap>();
+  interviews.forEach(interview => {
+    const gaps = (interview.training_gaps as unknown as TrainingGap[]) || [];
+    gaps.forEach(gap => {
+      const key = gap.area.toLowerCase();
+      const existing = trainingGapMap.get(key);
+      if (existing) {
+        existing.affectedRoles = [...new Set([...existing.affectedRoles, ...gap.affectedRoles])];
+        if ((priorityOrder[gap.priority] || 0) > (priorityOrder[existing.priority] || 0)) {
+          existing.priority = gap.priority;
+        }
+        if (gap.suggestedTraining && !existing.suggestedTraining) {
+          existing.suggestedTraining = gap.suggestedTraining;
+        }
+      } else {
+        trainingGapMap.set(key, { ...gap, id: nanoid() });
+      }
+    });
+  });
+
+  // Merge handoff risks - group by from/to/process, keep highest risk
+  const handoffMap = new Map<string, HandoffRisk>();
+  interviews.forEach(interview => {
+    const handoffs = (interview.handoff_risks as unknown as HandoffRisk[]) || [];
+    handoffs.forEach(handoff => {
+      const key = `${handoff.fromRole.toLowerCase()}->${handoff.toRole.toLowerCase()}:${handoff.process.toLowerCase()}`;
+      const existing = handoffMap.get(key);
+      if (existing) {
+        if ((riskOrder[handoff.riskLevel] || 0) > (riskOrder[existing.riskLevel] || 0)) {
+          existing.riskLevel = handoff.riskLevel;
+        }
+        if (handoff.mitigation && !existing.mitigation) existing.mitigation = handoff.mitigation;
+      } else {
+        handoffMap.set(key, { ...handoff, id: nanoid() });
+      }
+    });
+  });
+
+  return {
+    workflows: Array.from(workflowMap.values()),
+    painPoints: Array.from(painPointMap.values()),
+    tools: Array.from(toolMap.values()),
+    roles: Array.from(roleMap.values()),
+    trainingGaps: Array.from(trainingGapMap.values()),
+    handoffRisks: Array.from(handoffMap.values()),
   };
 }

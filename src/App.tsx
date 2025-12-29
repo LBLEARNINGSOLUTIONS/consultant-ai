@@ -15,7 +15,7 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X } from 'lucide-react';
+import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X, Merge } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
 import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
@@ -60,6 +60,7 @@ function App() {
     analyzeInterview,
     updateInterview,
     assignToCompany,
+    mergeInterviews,
   } = useInterviews(user?.id);
 
   const {
@@ -244,6 +245,32 @@ function App() {
       addToast(`Failed to generate summary: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsGeneratingSummary(false);
+    }
+  };
+
+  const handleMergeInterviews = async () => {
+    if (selectedInterviewIds.size < 2) {
+      addToast('Select at least 2 interviews to merge', 'warning');
+      return;
+    }
+
+    const title = prompt('Enter a title for the merged interview:');
+    if (!title) return;
+
+    const selectedInterviews = interviews.filter(i => selectedInterviewIds.has(i.id));
+    const { error } = await mergeInterviews(title, selectedInterviews);
+
+    if (error) {
+      addToast(`Failed to merge interviews: ${error}`, 'error');
+    } else {
+      // Ask to delete source interviews
+      if (window.confirm('Merge successful! Delete the original interviews?')) {
+        for (const id of selectedInterviewIds) {
+          await deleteInterview(id);
+        }
+      }
+      setSelectedInterviewIds(new Set());
+      addToast('Interviews merged successfully', 'success');
     }
   };
 
@@ -439,6 +466,15 @@ function App() {
             </div>
 
             <div className="flex items-center gap-3">
+              {selectedInterviewIds.size >= 2 && (
+                <button
+                  onClick={handleMergeInterviews}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                >
+                  <Merge className="w-4 h-4" />
+                  Merge ({selectedInterviewIds.size})
+                </button>
+              )}
               {selectedInterviewIds.size > 0 && (
                 <button
                   onClick={handleGenerateSummary}

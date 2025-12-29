@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Interview, InsertInterview, UpdateInterview } from '../types/database';
 import { analyzeTranscript } from '../services/analysisService';
+import { mergeAnalysisData } from '../utils/analysisHelpers';
 
 export function useInterviews(userId?: string) {
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -184,6 +185,52 @@ export function useInterviews(userId?: string) {
     }
   };
 
+  const mergeInterviews = async (title: string, sourceInterviews: Interview[]) => {
+    if (!userId || sourceInterviews.length < 2) {
+      return { data: null, error: 'Need at least 2 interviews to merge' };
+    }
+
+    try {
+      setError(null);
+
+      // Combine transcripts with separators
+      const combinedTranscript = sourceInterviews
+        .map((interview, idx) => `--- Interview ${idx + 1}: ${interview.title} ---\n\n${interview.transcript_text}`)
+        .join('\n\n');
+
+      // Merge analysis data
+      const mergedAnalysis = mergeAnalysisData(sourceInterviews);
+
+      // Create the merged interview
+      const { data, error: insertError } = await supabase
+        .from('interviews')
+        .insert({
+          user_id: userId,
+          title,
+          transcript_text: combinedTranscript,
+          analysis_status: 'completed',
+          workflows: mergedAnalysis.workflows as any,
+          pain_points: mergedAnalysis.painPoints as any,
+          tools: mergedAnalysis.tools as any,
+          roles: mergedAnalysis.roles as any,
+          training_gaps: mergedAnalysis.trainingGaps as any,
+          handoff_risks: mergedAnalysis.handoffRisks as any,
+          analyzed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      await fetchInterviews();
+      return { data, error: null };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to merge interviews';
+      setError(errorMessage);
+      return { data: null, error: errorMessage };
+    }
+  };
+
   return {
     interviews,
     loading,
@@ -193,6 +240,7 @@ export function useInterviews(userId?: string) {
     deleteInterview,
     assignToCompany,
     analyzeInterview,
+    mergeInterviews,
     refreshInterviews: fetchInterviews,
   };
 }
