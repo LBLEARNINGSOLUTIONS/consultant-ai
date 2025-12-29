@@ -1,4 +1,4 @@
-import { Users, AlertTriangle, GraduationCap, ArrowRight, ArrowLeft, Edit2, Trash2 } from 'lucide-react';
+import { Users, AlertTriangle, GraduationCap, ArrowRight, ArrowLeft, Edit2, Trash2, Merge } from 'lucide-react';
 import { RoleProfile } from '../../../types/analysis';
 import { Badge } from '../../analysis/Badge';
 
@@ -7,10 +7,11 @@ interface RoleProfileCardProps {
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onMerge?: () => void;
   canEdit?: boolean;
 }
 
-export function RoleProfileCard({ profile, onClick, onEdit, onDelete, canEdit }: RoleProfileCardProps) {
+export function RoleProfileCard({ profile, onClick, onEdit, onDelete, onMerge, canEdit }: RoleProfileCardProps) {
   const hasIssues = profile.issuesDetected.length > 0;
   const hasTrainingNeeds = profile.trainingNeeds.length > 0;
   const hasDependencies = profile.inputsFrom.length > 0 || profile.outputsTo.length > 0;
@@ -35,6 +36,11 @@ export function RoleProfileCard({ profile, onClick, onEdit, onDelete, canEdit }:
     onDelete?.();
   };
 
+  const handleMergeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onMerge?.();
+  };
+
   return (
     <div
       onClick={onClick}
@@ -55,7 +61,7 @@ export function RoleProfileCard({ profile, onClick, onEdit, onDelete, canEdit }:
             </p>
           </div>
         </div>
-        {/* Edit/Delete buttons */}
+        {/* Edit/Merge/Delete buttons */}
         {canEdit && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
@@ -64,6 +70,13 @@ export function RoleProfileCard({ profile, onClick, onEdit, onDelete, canEdit }:
               title="Edit role"
             >
               <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleMergeClick}
+              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="Merge with another role"
+            >
+              <Merge className="w-4 h-4" />
             </button>
             <button
               onClick={handleDeleteClick}
