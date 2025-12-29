@@ -15,7 +15,7 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X, Merge } from 'lucide-react';
+import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X, Merge, RefreshCw } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
 import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
@@ -378,6 +378,28 @@ function App() {
     addToast('Interview renamed', 'success');
   };
 
+  // Retry failed analysis
+  const handleRetryAnalysis = async (interview: Interview) => {
+    if (!interview.transcript_text) {
+      addToast('No transcript text available to analyze', 'error');
+      return;
+    }
+
+    setAnalyzing(prev => new Set(prev).add(interview.id));
+    const result = await analyzeInterview(interview.id, interview.transcript_text);
+    setAnalyzing(prev => {
+      const next = new Set(prev);
+      next.delete(interview.id);
+      return next;
+    });
+
+    if (result?.error) {
+      addToast(`Analysis failed: ${result.error}`, 'error');
+    } else {
+      addToast('Analysis completed successfully', 'success');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -690,9 +712,19 @@ function App() {
                                 </div>
                               )}
 
-                              {interview.error_message && (
-                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                                  {interview.error_message}
+                              {interview.analysis_status === 'failed' && (
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                  {interview.error_message && (
+                                    <p className="text-xs text-red-700 mb-2">{interview.error_message}</p>
+                                  )}
+                                  <button
+                                    onClick={() => handleRetryAnalysis(interview)}
+                                    disabled={analyzing.has(interview.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${analyzing.has(interview.id) ? 'animate-spin' : ''}`} />
+                                    {analyzing.has(interview.id) ? 'Retrying...' : 'Retry Analysis'}
+                                  </button>
                                 </div>
                               )}
 
