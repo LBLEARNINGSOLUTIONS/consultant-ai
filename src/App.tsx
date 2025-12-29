@@ -5,6 +5,7 @@ import { useInterviews } from './hooks/useInterviews';
 import { useCompanySummary } from './hooks/useCompanySummary';
 import { useCompanies } from './hooks/useCompanies';
 import { useInterviewFilters } from './hooks/useInterviewFilters';
+import { useToast } from './contexts/ToastContext';
 import { Login } from './components/auth/Login';
 import { TranscriptUpload } from './components/upload/TranscriptUpload';
 import { AnalysisViewer } from './components/analysis/AnalysisViewer';
@@ -14,7 +15,7 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical } from 'lucide-react';
+import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
 import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
@@ -50,6 +51,7 @@ function DraggableCard({ id, children }: { id: string; children: React.ReactNode
 
 function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { addToast } = useToast();
   const {
     interviews,
     loading: interviewsLoading,
@@ -84,6 +86,8 @@ function App() {
   const [selectedInterviewIds, setSelectedInterviewIds] = useState<Set<string>>(new Set());
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState<CompanySummary | null>(null);
+  const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   // Filter interviews by selected company and search/filters - must be before early returns to maintain hooks order
   const {
@@ -130,10 +134,13 @@ function App() {
 
   const handleUploadComplete = async (results: UploadResult[]) => {
     setShowUpload(false);
+    let successCount = 0;
+    let failCount = 0;
 
     for (const result of results) {
       if (result.error || !result.text) {
         console.error(`Failed to upload ${result.filename}:`, result.error);
+        failCount++;
         continue;
       }
 
@@ -148,21 +155,35 @@ function App() {
       // Start analysis
       if (interview && !createError) {
         setAnalyzing(prev => new Set(prev).add(interview.id));
-        await analyzeInterview(interview.id, result.text);
+        const analysisResult = await analyzeInterview(interview.id, result.text);
         setAnalyzing(prev => {
           const next = new Set(prev);
           next.delete(interview.id);
           return next;
         });
+        if (analysisResult?.error) {
+          addToast(`Analysis failed for "${result.filename}"`, 'error');
+        } else {
+          successCount++;
+        }
       } else if (createError) {
         console.error('Failed to create interview:', createError);
+        failCount++;
       }
+    }
+
+    if (successCount > 0) {
+      addToast(`${successCount} interview${successCount > 1 ? 's' : ''} uploaded and analyzed`, 'success');
+    }
+    if (failCount > 0) {
+      addToast(`${failCount} upload${failCount > 1 ? 's' : ''} failed`, 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this interview?')) {
       await deleteInterview(id);
+      addToast('Interview deleted', 'success');
     }
   };
 
@@ -199,7 +220,7 @@ function App() {
 
   const handleGenerateSummary = async () => {
     if (selectedInterviewIds.size === 0) {
-      alert('Please select at least one interview to generate a summary.');
+      addToast('Please select at least one interview to generate a summary', 'warning');
       return;
     }
 
@@ -212,13 +233,14 @@ function App() {
       const { error } = await generateSummary(title, selectedInterviews);
 
       if (error) {
-        alert(`Failed to generate summary: ${typeof error === 'string' ? error : 'Unknown error'}`);
+        addToast(`Failed to generate summary: ${typeof error === 'string' ? error : 'Unknown error'}`, 'error');
       } else {
         setSelectedInterviewIds(new Set());
         setViewMode('summaries');
+        addToast('Company summary generated successfully', 'success');
       }
     } catch (error) {
-      alert(`Failed to generate summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to generate summary: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -227,6 +249,7 @@ function App() {
   const handleDeleteSummary = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this summary?')) {
       await deleteSummary(id);
+      addToast('Summary deleted', 'success');
     }
   };
 
@@ -239,6 +262,7 @@ function App() {
       color,
       description: description || null,
     });
+    addToast(`Company "${name}" created`, 'success');
   };
 
   const handleEditCompany = (company: Company) => {
@@ -254,6 +278,7 @@ function App() {
       description: description || null,
     });
     setEditingCompany(null);
+    addToast('Company updated', 'success');
   };
 
   const handleDeleteCompany = async (company: Company) => {
@@ -263,6 +288,7 @@ function App() {
       if (selectedCompanyFilter === company.id) {
         setSelectedCompanyFilter(null);
       }
+      addToast(`Company "${company.name}" deleted`, 'success');
     }
   };
 
@@ -277,11 +303,15 @@ function App() {
 
     // Determine the target company ID
     let targetCompanyId: string | null = null;
+    let targetName = 'Unassigned';
 
     if (dropTargetId === 'unassigned') {
       targetCompanyId = null;
+      targetName = 'Unassigned';
     } else if (dropTargetId.startsWith('company-')) {
       targetCompanyId = dropTargetId.replace('company-', '');
+      const company = companies.find(c => c.id === targetCompanyId);
+      targetName = company?.name || 'company';
     } else {
       return; // Invalid drop target
     }
@@ -294,6 +324,30 @@ function App() {
 
     // Assign the interview to the company
     await assignToCompany(interviewId, targetCompanyId);
+    addToast(`Interview moved to "${targetName}"`, 'success');
+  };
+
+  // Handle renaming an interview
+  const handleStartRename = (interview: Interview) => {
+    setEditingInterviewId(interview.id);
+    setEditingTitle(interview.title);
+  };
+
+  const handleCancelRename = () => {
+    setEditingInterviewId(null);
+    setEditingTitle('');
+  };
+
+  const handleSaveRename = async (id: string) => {
+    const trimmedTitle = editingTitle.trim();
+    if (!trimmedTitle) {
+      handleCancelRename();
+      return;
+    }
+    await updateInterview(id, { title: trimmedTitle });
+    setEditingInterviewId(null);
+    setEditingTitle('');
+    addToast('Interview renamed', 'success');
   };
 
   return (
@@ -528,9 +582,51 @@ function App() {
                                     )}
                                   </button>
                                 )}
-                                <h3 className="font-semibold text-slate-900 flex-1 line-clamp-2">
-                                  {interview.title}
-                                </h3>
+                                {editingInterviewId === interview.id ? (
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={editingTitle}
+                                      onChange={(e) => setEditingTitle(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveRename(interview.id);
+                                        } else if (e.key === 'Escape') {
+                                          handleCancelRename();
+                                        }
+                                      }}
+                                      className="flex-1 px-2 py-1 text-sm border border-indigo-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={() => handleSaveRename(interview.id)}
+                                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                      title="Save"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={handleCancelRename}
+                                      className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex-1 flex items-start gap-2 group">
+                                    <h3 className="font-semibold text-slate-900 flex-1 line-clamp-2">
+                                      {interview.title}
+                                    </h3>
+                                    <button
+                                      onClick={() => handleStartRename(interview)}
+                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Rename interview"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                               <button
                                 onClick={() => handleDelete(interview.id)}
