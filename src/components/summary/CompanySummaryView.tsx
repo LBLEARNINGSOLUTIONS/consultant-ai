@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CompanySummaryData } from '../../types/analysis';
-import { CompanySummary } from '../../types/database';
+import { CompanySummary, Json } from '../../types/database';
 import { Badge } from '../analysis/Badge';
 import {
   ArrowLeft,
@@ -11,18 +11,96 @@ import {
   Users,
   GraduationCap,
   GitMerge,
+  Lightbulb,
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatters';
 import { generateCompanySummaryPDF, downloadPDF } from '../../services/pdfService';
+import { useToast } from '../../contexts/ToastContext';
 
 interface CompanySummaryViewProps {
   summary: CompanySummary;
   onBack: () => void;
+  onUpdate?: (id: string, updates: { summary_data?: Json }) => Promise<{ error: string | null }>;
 }
 
-export function CompanySummaryView({ summary, onBack }: CompanySummaryViewProps) {
+type RecommendationPriority = 'high' | 'medium' | 'low';
+
+export function CompanySummaryView({ summary, onBack, onUpdate }: CompanySummaryViewProps) {
   const data = summary.summary_data as any as CompanySummaryData;
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const { addToast } = useToast();
+
+  // Recommendations state
+  const [recommendations, setRecommendations] = useState(data.recommendations || []);
+  const [isAddingRec, setIsAddingRec] = useState(false);
+  const [newRecText, setNewRecText] = useState('');
+  const [newRecPriority, setNewRecPriority] = useState<RecommendationPriority>('medium');
+  const [editingRecId, setEditingRecId] = useState<string | null>(null);
+  const [editingRecText, setEditingRecText] = useState('');
+  const [editingRecPriority, setEditingRecPriority] = useState<RecommendationPriority>('medium');
+
+  const saveRecommendations = async (newRecs: typeof recommendations) => {
+    if (!onUpdate) return;
+
+    const updatedData = { ...data, recommendations: newRecs };
+    const { error } = await onUpdate(summary.id, { summary_data: updatedData as unknown as Json });
+
+    if (error) {
+      addToast('Failed to save recommendations', 'error');
+    } else {
+      setRecommendations(newRecs);
+      addToast('Recommendations saved', 'success');
+    }
+  };
+
+  const handleAddRecommendation = async () => {
+    if (!newRecText.trim()) return;
+
+    const newRec = {
+      id: `rec-${Date.now()}`,
+      text: newRecText.trim(),
+      priority: newRecPriority,
+    };
+
+    await saveRecommendations([...recommendations, newRec]);
+    setNewRecText('');
+    setNewRecPriority('medium');
+    setIsAddingRec(false);
+  };
+
+  const handleEditRecommendation = async (id: string) => {
+    if (!editingRecText.trim()) return;
+
+    const updated = recommendations.map(rec =>
+      rec.id === id ? { ...rec, text: editingRecText.trim(), priority: editingRecPriority } : rec
+    );
+
+    await saveRecommendations(updated);
+    setEditingRecId(null);
+    setEditingRecText('');
+  };
+
+  const handleDeleteRecommendation = async (id: string) => {
+    const updated = recommendations.filter(rec => rec.id !== id);
+    await saveRecommendations(updated);
+  };
+
+  const startEditing = (rec: { id: string; text: string; priority: RecommendationPriority }) => {
+    setEditingRecId(rec.id);
+    setEditingRecText(rec.text);
+    setEditingRecPriority(rec.priority);
+  };
+
+  const priorityColors = {
+    high: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+    medium: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' },
+    low: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
+  };
 
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
@@ -297,6 +375,172 @@ export function CompanySummaryView({ summary, onBack }: CompanySummaryViewProps)
             </div>
           </div>
         )}
+
+        {/* Recommendations */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-emerald-600" />
+              Recommendations
+            </h2>
+            {onUpdate && !isAddingRec && (
+              <button
+                onClick={() => setIsAddingRec(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Recommendation
+              </button>
+            )}
+          </div>
+
+          {/* Add new recommendation form */}
+          {isAddingRec && (
+            <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+              <textarea
+                value={newRecText}
+                onChange={(e) => setNewRecText(e.target.value)}
+                placeholder="Enter your recommendation..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                rows={3}
+                autoFocus
+              />
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Priority:</span>
+                  <select
+                    value={newRecPriority}
+                    onChange={(e) => setNewRecPriority(e.target.value as RecommendationPriority)}
+                    className="px-2 py-1 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsAddingRec(false);
+                      setNewRecText('');
+                      setNewRecPriority('medium');
+                    }}
+                    className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddRecommendation}
+                    disabled={!newRecText.trim()}
+                    className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Recommendations list */}
+          {recommendations.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Lightbulb className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p>No recommendations yet.</p>
+              {onUpdate && (
+                <p className="text-sm mt-1">Add your first recommendation to get started.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recommendations.map((rec) => {
+                const colors = priorityColors[rec.priority];
+                const isEditing = editingRecId === rec.id;
+
+                return (
+                  <div
+                    key={rec.id}
+                    className={`p-4 rounded-lg border ${colors.bg} ${colors.border}`}
+                  >
+                    {isEditing ? (
+                      <div>
+                        <textarea
+                          value={editingRecText}
+                          onChange={(e) => setEditingRecText(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white"
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-600">Priority:</span>
+                            <select
+                              value={editingRecPriority}
+                              onChange={(e) => setEditingRecPriority(e.target.value as RecommendationPriority)}
+                              className="px-2 py-1 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                            >
+                              <option value="high">High</option>
+                              <option value="medium">Medium</option>
+                              <option value="low">Low</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingRecId(null);
+                                setEditingRecText('');
+                              }}
+                              className="p-1.5 text-slate-500 hover:bg-white/50 rounded transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditRecommendation(rec.id)}
+                              className="p-1.5 text-emerald-600 hover:bg-white/50 rounded transition-colors"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-slate-900">{rec.text}</p>
+                          <Badge
+                            variant={rec.priority === 'high' ? 'red' : rec.priority === 'medium' ? 'yellow' : 'green'}
+                            className="mt-2"
+                          >
+                            {rec.priority} priority
+                          </Badge>
+                        </div>
+                        {onUpdate && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEditing(rec)}
+                              className={`p-1.5 ${colors.text} hover:bg-white/50 rounded transition-colors`}
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecommendation(rec.id)}
+                              className="p-1.5 text-red-500 hover:bg-white/50 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

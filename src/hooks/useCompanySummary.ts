@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { CompanySummary, InsertCompanySummary, Interview } from '../types/database';
+import { CompanySummary, InsertCompanySummary, Interview, Json } from '../types/database';
 import { generateCompanySummary } from '../services/analysisService';
 import { InterviewAnalysis } from '../types/analysis';
 
@@ -99,6 +99,25 @@ export function useCompanySummary(userId?: string) {
     }
   };
 
+  const updateSummary = async (id: string, updates: { summary_data?: Json; title?: string }) => {
+    try {
+      setError(null);
+      const { error: updateError } = await supabase
+        .from('company_summaries')
+        .update(updates)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      await fetchSummaries();
+      return { error: null };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update summary';
+      setError(errorMessage);
+      return { error: errorMessage };
+    }
+  };
+
   const generateSummary = async (
     title: string,
     selectedInterviews: Interview[]
@@ -148,6 +167,7 @@ export function useCompanySummary(userId?: string) {
     loading,
     error,
     createSummary,
+    updateSummary,
     deleteSummary,
     generateSummary,
     refreshSummaries: fetchSummaries,

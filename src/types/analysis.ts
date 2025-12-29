@@ -112,6 +112,13 @@ export interface CompanySummaryData {
     process: string;
     occurrences: number;
   }>;
+
+  // User-added recommendations
+  recommendations?: Array<{
+    id: string;
+    text: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
 }
 
 // Claude API response structure

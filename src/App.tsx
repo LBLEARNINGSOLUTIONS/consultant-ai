@@ -66,6 +66,7 @@ function App() {
     summaries,
     loading: summariesLoading,
     generateSummary,
+    updateSummary,
     deleteSummary,
   } = useCompanySummary(user?.id);
 
@@ -867,6 +868,7 @@ function App() {
         <CompanySummaryView
           summary={selectedSummary}
           onBack={() => setSelectedSummary(null)}
+          onUpdate={updateSummary}
         />
       )}
 
