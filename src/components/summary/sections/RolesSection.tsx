@@ -3,15 +3,18 @@ import { Users, Search, Plus, Edit2, Trash2, Check, X } from 'lucide-react';
 import { RoleProfile } from '../../../types/analysis';
 import { RoleProfileCard } from './RoleProfileCard';
 import { RoleDetailModal } from './RoleDetailModal';
+import { RoleEditModal } from './RoleEditModal';
 
 interface RolesSectionProps {
   roleDistribution: Record<string, number>;
   roleProfiles?: RoleProfile[];
   onUpdate?: (roleDistribution: Record<string, number>) => Promise<void>;
+  onUpdateProfiles?: (profiles: RoleProfile[]) => Promise<void>;
 }
 
-export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate }: RolesSectionProps) {
+export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, onUpdateProfiles }: RolesSectionProps) {
   const [selectedRole, setSelectedRole] = useState<RoleProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<RoleProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingRole, setEditingRole] = useState<string | null>(null);
@@ -19,6 +22,7 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate }: 
   const [newCount, setNewCount] = useState(1);
   const [editRole, setEditRole] = useState('');
   const [editCount, setEditCount] = useState(1);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Filter profiles by search query
   const filteredProfiles = useMemo(() => {
@@ -67,6 +71,33 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate }: 
     setEditingRole(role);
     setEditRole(role);
     setEditCount(count);
+  };
+
+  // Profile-based handlers
+  const handleEditProfile = (profile: RoleProfile) => {
+    setEditingProfile(profile);
+  };
+
+  const handleSaveProfile = async (updatedProfile: RoleProfile) => {
+    if (!onUpdateProfiles) return;
+
+    const updatedProfiles = roleProfiles.map(p =>
+      p.id === updatedProfile.id ? updatedProfile : p
+    );
+    await onUpdateProfiles(updatedProfiles);
+    setEditingProfile(null);
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    if (!onUpdateProfiles) return;
+
+    const updatedProfiles = roleProfiles.filter(p => p.id !== profileId);
+    await onUpdateProfiles(updatedProfiles);
+    setDeleteConfirm(null);
+  };
+
+  const confirmDelete = (profileId: string) => {
+    setDeleteConfirm(profileId);
   };
 
   return (
@@ -169,6 +200,9 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate }: 
                 key={profile.id}
                 profile={profile}
                 onClick={() => setSelectedRole(profile)}
+                onEdit={() => handleEditProfile(profile)}
+                onDelete={() => confirmDelete(profile.id)}
+                canEdit={!!onUpdateProfiles}
               />
             ))}
           </div>
@@ -246,11 +280,46 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate }: 
       )}
 
       {/* Role Detail Modal */}
-      {selectedRole && (
+      {selectedRole && !editingProfile && (
         <RoleDetailModal
           profile={selectedRole}
           onClose={() => setSelectedRole(null)}
         />
+      )}
+
+      {/* Role Edit Modal */}
+      {editingProfile && (
+        <RoleEditModal
+          profile={editingProfile}
+          onSave={handleSaveProfile}
+          onClose={() => setEditingProfile(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Role?</h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete this role? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteProfile(deleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

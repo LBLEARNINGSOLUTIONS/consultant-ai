@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { CompanySummaryData } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
@@ -50,8 +50,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   // Analytics data from interviews
   const { metrics } = useAnalyticsDashboard(interviews);
 
-  // Build role profiles from interview data
-  const roleProfiles = useMemo(() => buildRoleProfiles(interviews), [interviews]);
+  // Build role profiles from interview data (base profiles)
+  const baseRoleProfiles = useMemo(() => buildRoleProfiles(interviews), [interviews]);
 
   // Local state for editable sections
   const [workflows, setWorkflows] = useState(data.topWorkflows || []);
@@ -67,6 +67,35 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummary>(
     (data as unknown as { executiveSummary?: ExecutiveSummary }).executiveSummary || {}
   );
+
+  // Role profiles - start with saved customizations or use base profiles
+  const savedRoleProfiles = (data as unknown as { roleProfiles?: RoleProfile[] }).roleProfiles;
+  const [customRoleProfiles, setCustomRoleProfiles] = useState<RoleProfile[] | null>(
+    savedRoleProfiles || null
+  );
+
+  // Merge base profiles with customizations
+  const roleProfiles = useMemo(() => {
+    if (!customRoleProfiles) return baseRoleProfiles;
+
+    // Create a map of custom profiles by id for quick lookup
+    const customMap = new Map(customRoleProfiles.map(p => [p.id, p]));
+
+    // Start with custom profiles
+    const merged: RoleProfile[] = [...customRoleProfiles];
+
+    // Add any base profiles that don't exist in custom (new roles from interviews)
+    baseRoleProfiles.forEach(baseProfile => {
+      const existsByTitle = customRoleProfiles.some(
+        cp => cp.title.toLowerCase() === baseProfile.title.toLowerCase()
+      );
+      if (!existsByTitle && !customMap.has(baseProfile.id)) {
+        merged.push(baseProfile);
+      }
+    });
+
+    return merged.sort((a, b) => b.count - a.count);
+  }, [baseRoleProfiles, customRoleProfiles]);
 
   // Generic save function
   const saveData = async (updates: Partial<CompanySummaryData & { companyContext?: CompanyContext }>) => {
@@ -129,6 +158,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     if (!result.error) setExecutiveSummary(newExecSummary);
   };
 
+  const handleUpdateRoleProfiles = async (newProfiles: RoleProfile[]) => {
+    const result = await saveData({ roleProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setCustomRoleProfiles(newProfiles);
+  };
+
   // Render active section
   const renderSection = () => {
     switch (activeSection) {
@@ -160,6 +194,7 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
             roleDistribution={roleDistribution}
             roleProfiles={roleProfiles}
             onUpdate={onUpdate ? handleUpdateRoleDistribution : undefined}
+            onUpdateProfiles={onUpdate ? handleUpdateRoleProfiles : undefined}
           />
         );
 
