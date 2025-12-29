@@ -935,6 +935,7 @@ function App() {
       {selectedSummary && (
         <CompanySummaryView
           summary={selectedSummary}
+          interviews={interviews.filter(i => selectedSummary.interview_ids?.includes(i.id))}
           onBack={() => setSelectedSummary(null)}
           onUpdate={updateSummary}
         />
