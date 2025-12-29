@@ -4,6 +4,26 @@ import { RoleProfile } from '../../../types/analysis';
 import { RoleProfileCard } from './RoleProfileCard';
 import { RoleDetailModal } from './RoleDetailModal';
 import { RoleEditModal } from './RoleEditModal';
+import { RoleMergeModal } from './RoleMergeModal';
+
+// Helper function to merge arrays by a key, combining counts
+function mergeArraysByKey<T>(
+  items: T[],
+  getKey: (item: T) => string,
+  merge: (a: T, b: T) => T
+): T[] {
+  const map = new Map<string, T>();
+  items.forEach(item => {
+    const key = getKey(item);
+    const existing = map.get(key);
+    if (existing) {
+      map.set(key, merge(existing, item));
+    } else {
+      map.set(key, item);
+    }
+  });
+  return Array.from(map.values());
+}
 
 interface RolesSectionProps {
   roleDistribution: Record<string, number>;
@@ -15,6 +35,7 @@ interface RolesSectionProps {
 export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, onUpdateProfiles }: RolesSectionProps) {
   const [selectedRole, setSelectedRole] = useState<RoleProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<RoleProfile | null>(null);
+  const [mergingProfile, setMergingProfile] = useState<RoleProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingRole, setEditingRole] = useState<string | null>(null);
@@ -98,6 +119,59 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, on
 
   const confirmDelete = (profileId: string) => {
     setDeleteConfirm(profileId);
+  };
+
+  // Merge handlers
+  const handleMergeProfile = (profile: RoleProfile) => {
+    setMergingProfile(profile);
+  };
+
+  const handleMerge = async (sourceId: string, targetId: string, mergedTitle: string) => {
+    if (!onUpdateProfiles) return;
+
+    const sourceProfile = roleProfiles.find(p => p.id === sourceId);
+    const targetProfile = roleProfiles.find(p => p.id === targetId);
+
+    if (!sourceProfile || !targetProfile) return;
+
+    // Create merged profile
+    const mergedProfile: RoleProfile = {
+      id: targetId, // Keep target ID
+      title: mergedTitle,
+      count: sourceProfile.count + targetProfile.count,
+      responsibilities: [...new Set([...targetProfile.responsibilities, ...sourceProfile.responsibilities])],
+      workflows: [...new Set([...targetProfile.workflows, ...sourceProfile.workflows])],
+      tools: [...new Set([...targetProfile.tools, ...sourceProfile.tools])],
+      inputsFrom: mergeArraysByKey(
+        [...targetProfile.inputsFrom, ...sourceProfile.inputsFrom],
+        (item) => `${item.role.toLowerCase()}-${item.process.toLowerCase()}`,
+        (a, b) => ({ ...a, count: a.count + b.count })
+      ),
+      outputsTo: mergeArraysByKey(
+        [...targetProfile.outputsTo, ...sourceProfile.outputsTo],
+        (item) => `${item.role.toLowerCase()}-${item.process.toLowerCase()}`,
+        (a, b) => ({ ...a, count: a.count + b.count })
+      ),
+      issuesDetected: mergeArraysByKey(
+        [...targetProfile.issuesDetected, ...sourceProfile.issuesDetected],
+        (item) => item.description.toLowerCase().slice(0, 50),
+        (a, b) => ({ ...a, count: a.count + b.count })
+      ),
+      trainingNeeds: mergeArraysByKey(
+        [...targetProfile.trainingNeeds, ...sourceProfile.trainingNeeds],
+        (item) => item.area.toLowerCase(),
+        (a, b) => ({ ...a, count: a.count + b.count })
+      ),
+      interviewIds: [...new Set([...targetProfile.interviewIds, ...sourceProfile.interviewIds])],
+    };
+
+    // Remove source profile and update target with merged data
+    const updatedProfiles = roleProfiles
+      .filter(p => p.id !== sourceId)
+      .map(p => p.id === targetId ? mergedProfile : p);
+
+    await onUpdateProfiles(updatedProfiles);
+    setMergingProfile(null);
   };
 
   return (
@@ -201,6 +275,7 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, on
                 profile={profile}
                 onClick={() => setSelectedRole(profile)}
                 onEdit={() => handleEditProfile(profile)}
+                onMerge={() => handleMergeProfile(profile)}
                 onDelete={() => confirmDelete(profile.id)}
                 canEdit={!!onUpdateProfiles}
               />
@@ -293,6 +368,16 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, on
           profile={editingProfile}
           onSave={handleSaveProfile}
           onClose={() => setEditingProfile(null)}
+        />
+      )}
+
+      {/* Role Merge Modal */}
+      {mergingProfile && (
+        <RoleMergeModal
+          sourceProfile={mergingProfile}
+          allProfiles={roleProfiles}
+          onMerge={handleMerge}
+          onClose={() => setMergingProfile(null)}
         />
       )}
 
