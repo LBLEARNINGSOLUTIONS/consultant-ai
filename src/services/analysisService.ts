@@ -13,6 +13,7 @@ Analyze the transcript and identify:
 4. **Roles** - Job titles, responsibilities, and team structures
 5. **Training Gaps** - Areas where documentation, training, or skill development is needed
 6. **Handoff Risks** - Critical points where work transfers between people or systems
+7. **Recommendations** - Actionable suggestions for improvements based on the analysis
 
 Return your analysis as strictly valid JSON matching this exact schema:
 
@@ -82,10 +83,19 @@ Return your analysis as strictly valid JSON matching this exact schema:
       "description": "Description of the risk",
       "mitigation": "optional mitigation strategy"
     }
+  ],
+  "recommendations": [
+    {
+      "id": "unique-id",
+      "text": "Clear, actionable recommendation",
+      "priority": "high" | "medium" | "low",
+      "category": "process" | "training" | "technology" | "organization" | "risk-mitigation",
+      "source": "optional - what finding this recommendation addresses"
+    }
   ]
 }
 
-Be thorough but concise. Focus on actionable insights. Generate unique IDs for each item.`;
+Be thorough but concise. Focus on actionable insights. Generate unique IDs for each item. For recommendations, synthesize the pain points, training gaps, and handoff risks into 3-7 prioritized, actionable improvement suggestions.`;
 
 /**
  * Analyze a single interview transcript using Claude AI
@@ -165,6 +175,7 @@ ${transcript}`,
     analysis.roles = analysis.roles.map(r => ({ ...r, id: r.id || nanoid() }));
     analysis.trainingGaps = analysis.trainingGaps.map(g => ({ ...g, id: g.id || nanoid() }));
     analysis.handoffRisks = analysis.handoffRisks.map(h => ({ ...h, id: h.id || nanoid() }));
+    analysis.recommendations = (analysis.recommendations || []).map(r => ({ ...r, id: r.id || nanoid() }));
 
     return {
       success: true,
