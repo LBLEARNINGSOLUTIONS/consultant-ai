@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { CompanySummaryData, RoleProfile } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile, WorkflowProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
 import { useAnalyticsDashboard } from '../../hooks/useAnalyticsDashboard';
-import { buildRoleProfiles } from '../../utils/analysisHelpers';
+import { buildRoleProfiles, buildWorkflowProfiles } from '../../utils/analysisHelpers';
 import { SummaryNav, SectionId } from './SummaryNav';
 import { ExecutiveSummarySection } from './sections/ExecutiveSummarySection';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
@@ -53,8 +53,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   // Build role profiles from interview data (base profiles)
   const baseRoleProfiles = useMemo(() => buildRoleProfiles(interviews), [interviews]);
 
+  // Build workflow profiles from interview data (base profiles)
+  const baseWorkflowProfiles = useMemo(() => buildWorkflowProfiles(interviews), [interviews]);
+
   // Local state for editable sections
-  const [workflows, setWorkflows] = useState(data.topWorkflows || []);
+  const workflows = data.topWorkflows || []; // Read-only for ExecutiveSummarySection
   const [painPoints, setPainPoints] = useState(data.criticalPainPoints || []);
   const [tools, setTools] = useState(data.commonTools || []);
   const [trainingGaps, setTrainingGaps] = useState(data.priorityTrainingGaps || []);
@@ -72,6 +75,12 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const savedRoleProfiles = (data as unknown as { roleProfiles?: RoleProfile[] }).roleProfiles;
   const [customRoleProfiles, setCustomRoleProfiles] = useState<RoleProfile[] | null>(
     savedRoleProfiles || null
+  );
+
+  // Workflow profiles - start with saved customizations or use base profiles
+  const savedWorkflowProfiles = (data as unknown as { workflowProfiles?: WorkflowProfile[] }).workflowProfiles;
+  const [customWorkflowProfiles, setCustomWorkflowProfiles] = useState<WorkflowProfile[] | null>(
+    savedWorkflowProfiles || null
   );
 
   // Merge base profiles with customizations
@@ -97,6 +106,29 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     return merged.sort((a, b) => b.count - a.count);
   }, [baseRoleProfiles, customRoleProfiles]);
 
+  // Merge base workflow profiles with customizations
+  const workflowProfiles = useMemo(() => {
+    if (!customWorkflowProfiles) return baseWorkflowProfiles;
+
+    // Create a map of custom profiles by id for quick lookup
+    const customMap = new Map(customWorkflowProfiles.map(p => [p.id, p]));
+
+    // Start with custom profiles
+    const merged: WorkflowProfile[] = [...customWorkflowProfiles];
+
+    // Add any base profiles that don't exist in custom (new workflows from interviews)
+    baseWorkflowProfiles.forEach(baseProfile => {
+      const existsByName = customWorkflowProfiles.some(
+        cp => cp.name.toLowerCase() === baseProfile.name.toLowerCase()
+      );
+      if (!existsByName && !customMap.has(baseProfile.id)) {
+        merged.push(baseProfile);
+      }
+    });
+
+    return merged.sort((a, b) => b.count - a.count);
+  }, [baseWorkflowProfiles, customWorkflowProfiles]);
+
   // Generic save function
   const saveData = async (updates: Partial<CompanySummaryData & { companyContext?: CompanyContext }>) => {
     if (!onUpdate) return { error: 'No update function' };
@@ -113,11 +145,6 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   };
 
   // Section-specific update handlers
-  const handleUpdateWorkflows = async (newWorkflows: typeof workflows) => {
-    const result = await saveData({ topWorkflows: newWorkflows });
-    if (!result.error) setWorkflows(newWorkflows);
-  };
-
   const handleUpdatePainPoints = async (newPainPoints: typeof painPoints) => {
     const result = await saveData({ criticalPainPoints: newPainPoints });
     if (!result.error) setPainPoints(newPainPoints);
@@ -163,6 +190,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     if (!result.error) setCustomRoleProfiles(newProfiles);
   };
 
+  const handleUpdateWorkflowProfiles = async (newProfiles: WorkflowProfile[]) => {
+    const result = await saveData({ workflowProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setCustomWorkflowProfiles(newProfiles);
+  };
+
   // Render active section
   const renderSection = () => {
     switch (activeSection) {
@@ -201,9 +233,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
       case 'workflows':
         return (
           <WorkflowsSection
-            workflows={workflows}
-            analyticsWorkflows={metrics.workflows}
-            onUpdate={onUpdate ? handleUpdateWorkflows : undefined}
+            workflowProfiles={workflowProfiles}
+            onUpdateProfiles={onUpdate ? handleUpdateWorkflowProfiles : undefined}
           />
         );
 

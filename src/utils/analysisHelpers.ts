@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -759,4 +759,193 @@ export function buildRoleProfiles(interviews: Interview[]): RoleProfile[] {
 
   // Sort by count descending
   return roleProfiles.sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Build comprehensive workflow profiles from interview data
+ * Aggregates workflows with steps, participants, systems, and failure points
+ */
+export function buildWorkflowProfiles(interviews: Interview[]): WorkflowProfile[] {
+  const completedInterviews = interviews.filter(i => i.analysis_status === 'completed');
+
+  // Aggregate workflow data
+  const workflowMap = new Map<string, {
+    name: string;
+    count: number;
+    frequency: string;
+    steps: Map<string, { name: string; count: number; order: number }>;
+    participants: Set<string>;
+    interviewIds: string[];
+    durations: string[];
+    notes: string[];
+  }>();
+
+  // Collect all pain points for failure point detection
+  const allPainPoints: Array<{ description: string; severity: string; relatedWorkflow?: string }> = [];
+
+  // Collect tool data for system mapping
+  const participantTools = new Map<string, Set<string>>(); // participant -> tools
+
+  completedInterviews.forEach(interview => {
+    // Process workflows
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
+    workflows.forEach(workflow => {
+      const key = workflow.name.toLowerCase();
+      const existing = workflowMap.get(key);
+
+      if (existing) {
+        existing.count++;
+        workflow.participants.forEach(p => existing.participants.add(p));
+        existing.interviewIds.push(interview.id);
+
+        // Merge steps with frequency counting
+        workflow.steps.forEach((stepName, idx) => {
+          const stepKey = stepName.toLowerCase();
+          const stepData = existing.steps.get(stepKey);
+          if (stepData) {
+            stepData.count++;
+          } else {
+            existing.steps.set(stepKey, { name: stepName, count: 1, order: idx });
+          }
+        });
+
+        // Track frequency (keep most frequent)
+        const freqOrder: Record<string, number> = { daily: 4, weekly: 3, monthly: 2, 'ad-hoc': 1 };
+        if ((freqOrder[workflow.frequency] || 0) > (freqOrder[existing.frequency] || 0)) {
+          existing.frequency = workflow.frequency;
+        }
+
+        if (workflow.duration) existing.durations.push(workflow.duration);
+        if (workflow.notes) existing.notes.push(workflow.notes);
+      } else {
+        const stepsMap = new Map<string, { name: string; count: number; order: number }>();
+        workflow.steps.forEach((stepName, idx) => {
+          stepsMap.set(stepName.toLowerCase(), { name: stepName, count: 1, order: idx });
+        });
+
+        workflowMap.set(key, {
+          name: workflow.name,
+          count: 1,
+          frequency: workflow.frequency,
+          steps: stepsMap,
+          participants: new Set(workflow.participants),
+          interviewIds: [interview.id],
+          durations: workflow.duration ? [workflow.duration] : [],
+          notes: workflow.notes ? [workflow.notes] : [],
+        });
+      }
+    });
+
+    // Collect pain points with potential workflow associations
+    const painPoints = (interview.pain_points as unknown as PainPoint[]) || [];
+    painPoints.forEach(pp => {
+      allPainPoints.push({
+        description: pp.description,
+        severity: pp.severity,
+        // Try to infer related workflow from context (check if description mentions a workflow)
+      });
+    });
+
+    // Map participants to tools
+    const tools = (interview.tools as unknown as Tool[]) || [];
+    tools.forEach(tool => {
+      tool.usedBy.forEach(user => {
+        const existing = participantTools.get(user.toLowerCase()) || new Set<string>();
+        existing.add(tool.name);
+        participantTools.set(user.toLowerCase(), existing);
+      });
+    });
+
+    // Also map roles to tools from role data
+    const roles = (interview.roles as unknown as Role[]) || [];
+    roles.forEach(role => {
+      role.tools.forEach(tool => {
+        const existing = participantTools.get(role.title.toLowerCase()) || new Set<string>();
+        existing.add(tool);
+        participantTools.set(role.title.toLowerCase(), existing);
+      });
+    });
+  });
+
+  // Build workflow profiles
+  const workflowProfiles: WorkflowProfile[] = [];
+
+  workflowMap.forEach((data) => {
+    // Sort steps by their average order
+    const sortedSteps = Array.from(data.steps.values())
+      .sort((a, b) => a.order - b.order);
+
+    // Build WorkflowStep objects
+    const steps: WorkflowStep[] = sortedSteps.map((stepData) => {
+      // Try to identify owner for this step based on participant tools/roles
+      // This is a heuristic - in practice, specific owner would come from more detailed analysis
+      const possibleOwners = Array.from(data.participants);
+
+      return {
+        id: nanoid(),
+        name: stepData.name,
+        // Owner will be assigned during editing or through more detailed analysis
+        owner: possibleOwners.length === 1 ? possibleOwners[0] : undefined,
+        systems: [], // Will be populated from participant tools
+        issues: [], // Will be populated from pain points
+      };
+    });
+
+    // Collect all systems used by participants
+    const systems = new Set<string>();
+    data.participants.forEach(participant => {
+      const tools = participantTools.get(participant.toLowerCase());
+      if (tools) {
+        tools.forEach(tool => systems.add(tool));
+      }
+    });
+
+    // Find failure points - pain points that might relate to this workflow
+    // This is a heuristic based on keyword matching
+    const workflowKeywords = data.name.toLowerCase().split(/\s+/);
+    const failurePoints: WorkflowProfile['failurePoints'] = [];
+
+    allPainPoints.forEach(pp => {
+      const descLower = pp.description.toLowerCase();
+      // Check if pain point description mentions workflow name or any step
+      const mentionsWorkflow = workflowKeywords.some(kw => kw.length > 3 && descLower.includes(kw));
+      const mentionsStep = sortedSteps.some(step =>
+        step.name.toLowerCase().split(/\s+/).some(kw => kw.length > 3 && descLower.includes(kw))
+      );
+
+      if (mentionsWorkflow || mentionsStep) {
+        // Find which step it might relate to
+        const relatedStep = sortedSteps.find(step =>
+          step.name.toLowerCase().split(/\s+/).some(kw => kw.length > 3 && descLower.includes(kw))
+        );
+
+        failurePoints.push({
+          stepId: relatedStep ? steps.find(s => s.name === relatedStep.name)?.id : undefined,
+          description: pp.description,
+          severity: pp.severity,
+        });
+      }
+    });
+
+    // Identify unclear steps (steps mentioned only once or very brief names)
+    const unclearSteps = sortedSteps
+      .filter(step => step.count === 1 && step.name.split(/\s+/).length < 3)
+      .map(step => step.name);
+
+    workflowProfiles.push({
+      id: nanoid(),
+      name: data.name,
+      count: data.count,
+      frequency: data.frequency,
+      steps,
+      participants: Array.from(data.participants),
+      systems: Array.from(systems),
+      failurePoints: failurePoints.slice(0, 10), // Limit to top 10
+      unclearSteps,
+      interviewIds: data.interviewIds,
+    });
+  });
+
+  // Sort by count descending
+  return workflowProfiles.sort((a, b) => b.count - a.count);
 }

@@ -79,6 +79,46 @@ export interface InterviewAnalysis {
   recommendations: Recommendation[];
 }
 
+// Workflow Step for detailed workflow view
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  description?: string;
+  owner?: string;           // Role responsible for this step
+  inputs?: string[];        // What comes into this step
+  outputs?: string[];       // What this step produces
+  systems?: string[];       // Tools/systems used in this step
+  duration?: string;        // How long this step takes
+  issues?: Array<{          // Problems identified at this step
+    description: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+  }>;
+}
+
+// Workflow Profile for detailed workflow view
+export interface WorkflowProfile {
+  id: string;
+  name: string;
+  count: number;            // How many interviews mentioned this workflow
+  frequency: string;        // daily/weekly/monthly/ad-hoc
+
+  // Detailed process information
+  steps: WorkflowStep[];
+  participants: string[];   // All roles involved
+  systems: string[];        // All systems/tools used
+
+  // Problem areas
+  failurePoints: Array<{
+    stepId?: string;        // Which step has the issue
+    description: string;
+    severity: string;
+  }>;
+  unclearSteps: string[];   // Steps that lack clarity
+
+  // Traceability
+  interviewIds: string[];
+}
+
 // Role Profile for detailed role view
 export interface RoleProfile {
   id: string;
