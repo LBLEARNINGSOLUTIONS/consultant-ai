@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { GraduationCap, Plus, Search, Filter, AlertTriangle, Users, ChevronDown, ChevronRight, Brain, Wrench, TrendingUp, BookOpen, HelpCircle } from 'lucide-react';
+import { GraduationCap, Plus, Search, Filter, AlertTriangle, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import { TrainingGapProfile } from '../../../types/analysis';
 import { TrainingGapCard } from './TrainingGapCard';
 import { TrainingGapDetailModal } from './TrainingGapDetailModal';
@@ -17,14 +17,6 @@ const categoryLabels: Record<TrainingGapProfile['category'], string> = {
   process: 'Process',
   knowledge: 'Knowledge',
   other: 'Other',
-};
-
-const categoryIcons: Record<TrainingGapProfile['category'], typeof GraduationCap> = {
-  skill: Brain,
-  system: Wrench,
-  process: TrendingUp,
-  knowledge: BookOpen,
-  other: HelpCircle,
 };
 
 const categories: TrainingGapProfile['category'][] = ['skill', 'system', 'process', 'knowledge', 'other'];

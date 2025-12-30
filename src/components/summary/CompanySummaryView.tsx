@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
 import { useAnalyticsDashboard } from '../../hooks/useAnalyticsDashboard';
-import { buildRoleProfiles, buildWorkflowProfiles, buildToolProfiles } from '../../utils/analysisHelpers';
+import { buildRoleProfiles, buildWorkflowProfiles, buildToolProfiles, buildTrainingGapProfiles } from '../../utils/analysisHelpers';
 import { SummaryNav, SectionId } from './SummaryNav';
 import { ExecutiveSummarySection } from './sections/ExecutiveSummarySection';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
@@ -59,11 +59,13 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   // Build tool profiles from interview data (base profiles)
   const baseToolProfiles = useMemo(() => buildToolProfiles(interviews), [interviews]);
 
+  // Build training gap profiles from interview data (base profiles)
+  const baseTrainingGapProfiles = useMemo(() => buildTrainingGapProfiles(interviews), [interviews]);
+
   // Local state for editable sections
   const workflows = data.topWorkflows || []; // Read-only for ExecutiveSummarySection
   const tools = data.commonTools || []; // Read-only for ExecutiveSummarySection
   const [painPoints, setPainPoints] = useState(data.criticalPainPoints || []);
-  const [trainingGaps, setTrainingGaps] = useState(data.priorityTrainingGaps || []);
   const [handoffs, setHandoffs] = useState(data.highRiskHandoffs || []);
   const [recommendations, setRecommendations] = useState(data.recommendations || []);
   const [roleDistribution, setRoleDistribution] = useState(data.roleDistribution || {});
@@ -90,6 +92,12 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const savedToolProfiles = (data as unknown as { toolProfiles?: ToolProfile[] }).toolProfiles;
   const [customToolProfiles, setCustomToolProfiles] = useState<ToolProfile[] | null>(
     savedToolProfiles || null
+  );
+
+  // Training gap profiles - start with saved customizations or use base profiles
+  const savedTrainingGapProfiles = (data as unknown as { trainingGapProfiles?: TrainingGapProfile[] }).trainingGapProfiles;
+  const [customTrainingGapProfiles, setCustomTrainingGapProfiles] = useState<TrainingGapProfile[] | null>(
+    savedTrainingGapProfiles || null
   );
 
   // Merge base profiles with customizations
@@ -161,6 +169,41 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     return merged.sort((a, b) => b.count - a.count);
   }, [baseToolProfiles, customToolProfiles]);
 
+  // Merge base training gap profiles with customizations
+  const trainingGapProfiles = useMemo(() => {
+    if (!customTrainingGapProfiles) return baseTrainingGapProfiles;
+
+    // Create a map of custom profiles by id for quick lookup
+    const customMap = new Map(customTrainingGapProfiles.map(p => [p.id, p]));
+
+    // Start with custom profiles
+    const merged: TrainingGapProfile[] = [...customTrainingGapProfiles];
+
+    // Add any base profiles that don't exist in custom (new gaps from interviews)
+    baseTrainingGapProfiles.forEach(baseProfile => {
+      const existsByArea = customTrainingGapProfiles.some(
+        cp => cp.area.toLowerCase() === baseProfile.area.toLowerCase()
+      );
+      if (!existsByArea && !customMap.has(baseProfile.id)) {
+        merged.push(baseProfile);
+      }
+    });
+
+    // Sort by risk severity, then priority, then count
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+
+    return merged.sort((a, b) => {
+      const severityDiff = severityOrder[a.risk.severity] - severityOrder[b.risk.severity];
+      if (severityDiff !== 0) return severityDiff;
+
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+
+      return b.count - a.count;
+    });
+  }, [baseTrainingGapProfiles, customTrainingGapProfiles]);
+
   // Generic save function
   const saveData = async (updates: Partial<CompanySummaryData & { companyContext?: CompanyContext }>) => {
     if (!onUpdate) return { error: 'No update function' };
@@ -180,11 +223,6 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdatePainPoints = async (newPainPoints: typeof painPoints) => {
     const result = await saveData({ criticalPainPoints: newPainPoints });
     if (!result.error) setPainPoints(newPainPoints);
-  };
-
-  const handleUpdateTrainingGaps = async (newGaps: typeof trainingGaps) => {
-    const result = await saveData({ priorityTrainingGaps: newGaps });
-    if (!result.error) setTrainingGaps(newGaps);
   };
 
   const handleUpdateHandoffs = async (newHandoffs: typeof handoffs) => {
@@ -225,6 +263,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdateToolProfiles = async (newProfiles: ToolProfile[]) => {
     const result = await saveData({ toolProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
     if (!result.error) setCustomToolProfiles(newProfiles);
+  };
+
+  const handleUpdateTrainingGapProfiles = async (newProfiles: TrainingGapProfile[]) => {
+    const result = await saveData({ trainingGapProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setCustomTrainingGapProfiles(newProfiles);
   };
 
   // Render active section
@@ -293,9 +336,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
       case 'training':
         return (
           <TrainingGapsSection
-            trainingGaps={trainingGaps}
-            analyticsTrainingGaps={metrics.trainingGaps}
-            onUpdate={onUpdate ? handleUpdateTrainingGaps : undefined}
+            trainingGapProfiles={trainingGapProfiles}
+            onUpdateProfiles={onUpdate ? handleUpdateTrainingGapProfiles : undefined}
           />
         );
 
