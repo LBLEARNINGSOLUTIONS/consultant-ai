@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { CompanySummaryData, RoleProfile, WorkflowProfile } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
 import { useAnalyticsDashboard } from '../../hooks/useAnalyticsDashboard';
-import { buildRoleProfiles, buildWorkflowProfiles } from '../../utils/analysisHelpers';
+import { buildRoleProfiles, buildWorkflowProfiles, buildToolProfiles } from '../../utils/analysisHelpers';
 import { SummaryNav, SectionId } from './SummaryNav';
 import { ExecutiveSummarySection } from './sections/ExecutiveSummarySection';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
@@ -56,10 +56,13 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   // Build workflow profiles from interview data (base profiles)
   const baseWorkflowProfiles = useMemo(() => buildWorkflowProfiles(interviews), [interviews]);
 
+  // Build tool profiles from interview data (base profiles)
+  const baseToolProfiles = useMemo(() => buildToolProfiles(interviews), [interviews]);
+
   // Local state for editable sections
   const workflows = data.topWorkflows || []; // Read-only for ExecutiveSummarySection
+  const tools = data.commonTools || []; // Read-only for ExecutiveSummarySection
   const [painPoints, setPainPoints] = useState(data.criticalPainPoints || []);
-  const [tools, setTools] = useState(data.commonTools || []);
   const [trainingGaps, setTrainingGaps] = useState(data.priorityTrainingGaps || []);
   const [handoffs, setHandoffs] = useState(data.highRiskHandoffs || []);
   const [recommendations, setRecommendations] = useState(data.recommendations || []);
@@ -81,6 +84,12 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const savedWorkflowProfiles = (data as unknown as { workflowProfiles?: WorkflowProfile[] }).workflowProfiles;
   const [customWorkflowProfiles, setCustomWorkflowProfiles] = useState<WorkflowProfile[] | null>(
     savedWorkflowProfiles || null
+  );
+
+  // Tool profiles - start with saved customizations or use base profiles
+  const savedToolProfiles = (data as unknown as { toolProfiles?: ToolProfile[] }).toolProfiles;
+  const [customToolProfiles, setCustomToolProfiles] = useState<ToolProfile[] | null>(
+    savedToolProfiles || null
   );
 
   // Merge base profiles with customizations
@@ -129,6 +138,29 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     return merged.sort((a, b) => b.count - a.count);
   }, [baseWorkflowProfiles, customWorkflowProfiles]);
 
+  // Merge base tool profiles with customizations
+  const toolProfiles = useMemo(() => {
+    if (!customToolProfiles) return baseToolProfiles;
+
+    // Create a map of custom profiles by id for quick lookup
+    const customMap = new Map(customToolProfiles.map(p => [p.id, p]));
+
+    // Start with custom profiles
+    const merged: ToolProfile[] = [...customToolProfiles];
+
+    // Add any base profiles that don't exist in custom (new tools from interviews)
+    baseToolProfiles.forEach(baseProfile => {
+      const existsByName = customToolProfiles.some(
+        cp => cp.name.toLowerCase() === baseProfile.name.toLowerCase()
+      );
+      if (!existsByName && !customMap.has(baseProfile.id)) {
+        merged.push(baseProfile);
+      }
+    });
+
+    return merged.sort((a, b) => b.count - a.count);
+  }, [baseToolProfiles, customToolProfiles]);
+
   // Generic save function
   const saveData = async (updates: Partial<CompanySummaryData & { companyContext?: CompanyContext }>) => {
     if (!onUpdate) return { error: 'No update function' };
@@ -148,11 +180,6 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdatePainPoints = async (newPainPoints: typeof painPoints) => {
     const result = await saveData({ criticalPainPoints: newPainPoints });
     if (!result.error) setPainPoints(newPainPoints);
-  };
-
-  const handleUpdateTools = async (newTools: typeof tools) => {
-    const result = await saveData({ commonTools: newTools });
-    if (!result.error) setTools(newTools);
   };
 
   const handleUpdateTrainingGaps = async (newGaps: typeof trainingGaps) => {
@@ -193,6 +220,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdateWorkflowProfiles = async (newProfiles: WorkflowProfile[]) => {
     const result = await saveData({ workflowProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
     if (!result.error) setCustomWorkflowProfiles(newProfiles);
+  };
+
+  const handleUpdateToolProfiles = async (newProfiles: ToolProfile[]) => {
+    const result = await saveData({ toolProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setCustomToolProfiles(newProfiles);
   };
 
   // Render active section
@@ -253,9 +285,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
       case 'technology':
         return (
           <TechnologySection
-            tools={tools}
-            analyticsTools={metrics.tools}
-            onUpdate={onUpdate ? handleUpdateTools : undefined}
+            toolProfiles={toolProfiles}
+            onUpdateProfiles={onUpdate ? handleUpdateToolProfiles : undefined}
           />
         );
 
