@@ -200,6 +200,41 @@ export interface TrainingGapProfile {
   interviewIds: string[];
 }
 
+// Recommendation Profile for detailed roadmap view
+export interface RecommendationProfile {
+  id: string;
+  title: string;                    // Short summary title
+  description: string;              // Full recommendation text
+
+  // Classification
+  priority: 'high' | 'medium' | 'low';
+  category: 'process' | 'training' | 'technology' | 'organization' | 'risk-mitigation';
+  phase: 'immediate' | 'short-term' | 'long-term';  // Timeline phase
+
+  // Structured fields
+  problemAddressed: string;         // What issue does this solve?
+  scope: string;                    // Who/what is affected? (roles, departments, systems)
+  expectedImpact: string;           // Business/operational outcome
+  levelOfEffort: 'low' | 'medium' | 'high';  // Resource requirements
+  effortDetails?: string;           // Optional details on effort (hours, cost, etc.)
+
+  // Dependencies
+  dependencies: string[];           // Other recommendations or external factors needed first
+  relatedItems: {                   // Cross-references to other analysis items
+    roles?: string[];
+    workflows?: string[];
+    tools?: string[];
+    trainingGaps?: string[];
+    painPoints?: string[];
+  };
+
+  // Source tracking
+  source: 'auto' | 'manual';        // Auto-generated vs user-added
+  sourceDescription?: string;       // e.g., "Derived from pain point: Manual data entry"
+  count: number;                    // Interview mention count (for auto-generated)
+  interviewIds: string[];           // Traceability
+}
+
 // Role Profile for detailed role view
 export interface RoleProfile {
   id: string;

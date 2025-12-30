@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
 import { useAnalyticsDashboard } from '../../hooks/useAnalyticsDashboard';
-import { buildRoleProfiles, buildWorkflowProfiles, buildToolProfiles, buildTrainingGapProfiles } from '../../utils/analysisHelpers';
+import { buildRoleProfiles, buildWorkflowProfiles, buildToolProfiles, buildTrainingGapProfiles, buildRecommendationProfiles } from '../../utils/analysisHelpers';
 import { SummaryNav, SectionId } from './SummaryNav';
 import { ExecutiveSummarySection } from './sections/ExecutiveSummarySection';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
@@ -62,6 +62,9 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   // Build training gap profiles from interview data (base profiles)
   const baseTrainingGapProfiles = useMemo(() => buildTrainingGapProfiles(interviews), [interviews]);
 
+  // Build recommendation profiles from interview data (base profiles)
+  const baseRecommendationProfiles = useMemo(() => buildRecommendationProfiles(interviews), [interviews]);
+
   // Local state for editable sections
   const workflows = data.topWorkflows || []; // Read-only for ExecutiveSummarySection
   const tools = data.commonTools || []; // Read-only for ExecutiveSummarySection
@@ -98,6 +101,12 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const savedTrainingGapProfiles = (data as unknown as { trainingGapProfiles?: TrainingGapProfile[] }).trainingGapProfiles;
   const [customTrainingGapProfiles, setCustomTrainingGapProfiles] = useState<TrainingGapProfile[] | null>(
     savedTrainingGapProfiles || null
+  );
+
+  // Recommendation profiles - start with saved customizations or use base profiles
+  const savedRecommendationProfiles = (data as unknown as { recommendationProfiles?: RecommendationProfile[] }).recommendationProfiles;
+  const [customRecommendationProfiles, setCustomRecommendationProfiles] = useState<RecommendationProfile[] | null>(
+    savedRecommendationProfiles || null
   );
 
   // Merge base profiles with customizations
@@ -204,6 +213,41 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     });
   }, [baseTrainingGapProfiles, customTrainingGapProfiles]);
 
+  // Merge base recommendation profiles with customizations
+  const recommendationProfiles = useMemo(() => {
+    if (!customRecommendationProfiles) return baseRecommendationProfiles;
+
+    // Create a map of custom profiles by id for quick lookup
+    const customMap = new Map(customRecommendationProfiles.map(p => [p.id, p]));
+
+    // Start with custom profiles
+    const merged: RecommendationProfile[] = [...customRecommendationProfiles];
+
+    // Add any base profiles that don't exist in custom (new recommendations from interviews)
+    baseRecommendationProfiles.forEach(baseProfile => {
+      const existsByTitle = customRecommendationProfiles.some(
+        cp => cp.title.toLowerCase() === baseProfile.title.toLowerCase()
+      );
+      if (!existsByTitle && !customMap.has(baseProfile.id)) {
+        merged.push(baseProfile);
+      }
+    });
+
+    // Sort by phase, then priority, then count
+    const phaseOrder = { immediate: 0, 'short-term': 1, 'long-term': 2 };
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+
+    return merged.sort((a, b) => {
+      const phaseDiff = phaseOrder[a.phase] - phaseOrder[b.phase];
+      if (phaseDiff !== 0) return phaseDiff;
+
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+
+      return b.count - a.count;
+    });
+  }, [baseRecommendationProfiles, customRecommendationProfiles]);
+
   // Generic save function
   const saveData = async (updates: Partial<CompanySummaryData & { companyContext?: CompanyContext }>) => {
     if (!onUpdate) return { error: 'No update function' };
@@ -228,11 +272,6 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdateHandoffs = async (newHandoffs: typeof handoffs) => {
     const result = await saveData({ highRiskHandoffs: newHandoffs });
     if (!result.error) setHandoffs(newHandoffs);
-  };
-
-  const handleUpdateRecommendations = async (newRecs: typeof recommendations) => {
-    const result = await saveData({ recommendations: newRecs });
-    if (!result.error) setRecommendations(newRecs);
   };
 
   const handleUpdateRoleDistribution = async (newRoles: typeof roleDistribution) => {
@@ -268,6 +307,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const handleUpdateTrainingGapProfiles = async (newProfiles: TrainingGapProfile[]) => {
     const result = await saveData({ trainingGapProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
     if (!result.error) setCustomTrainingGapProfiles(newProfiles);
+  };
+
+  const handleUpdateRecommendationProfiles = async (newProfiles: RecommendationProfile[]) => {
+    const result = await saveData({ recommendationProfiles: newProfiles } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setCustomRecommendationProfiles(newProfiles);
   };
 
   // Render active section
@@ -344,8 +388,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
       case 'recommendations':
         return (
           <RecommendationsSection
-            recommendations={recommendations}
-            onUpdate={onUpdate ? handleUpdateRecommendations : undefined}
+            recommendationProfiles={recommendationProfiles}
+            onUpdateProfiles={onUpdate ? handleUpdateRecommendationProfiles : undefined}
           />
         );
 

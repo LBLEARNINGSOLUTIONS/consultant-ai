@@ -1,75 +1,193 @@
-import { useState } from 'react';
-import { Lightbulb, Plus, Edit2, Trash2, Check, X } from 'lucide-react';
-import { Badge } from '../../analysis/Badge';
-
-type Priority = 'high' | 'medium' | 'low';
-
-interface Recommendation {
-  id: string;
-  text: string;
-  priority: Priority;
-}
+import { useState, useMemo } from 'react';
+import { Lightbulb, Plus, Search, Filter, Zap, Clock, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { RecommendationProfile } from '../../../types/analysis';
+import { RecommendationCard } from './RecommendationCard';
+import { RecommendationDetailModal } from './RecommendationDetailModal';
+import { RecommendationEditModal } from './RecommendationEditModal';
+import { nanoid } from 'nanoid';
 
 interface RecommendationsSectionProps {
-  recommendations: Recommendation[];
-  onUpdate?: (recommendations: Recommendation[]) => Promise<void>;
+  recommendationProfiles?: RecommendationProfile[];
+  onUpdateProfiles?: (profiles: RecommendationProfile[]) => Promise<void>;
 }
 
-const priorityColors: Record<Priority, { bg: string; text: string; border: string }> = {
-  high: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
-  medium: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' },
-  low: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
+const categoryLabels: Record<RecommendationProfile['category'], string> = {
+  process: 'Process',
+  training: 'Training',
+  technology: 'Technology',
+  organization: 'Organization',
+  'risk-mitigation': 'Risk Mitigation',
 };
 
-export function RecommendationsSection({ recommendations, onUpdate }: RecommendationsSectionProps) {
+const phaseLabels: Record<RecommendationProfile['phase'], string> = {
+  immediate: 'Immediate (0-30 days)',
+  'short-term': 'Short-term (30-90 days)',
+  'long-term': 'Long-term (90+ days)',
+};
+
+const phaseColors: Record<RecommendationProfile['phase'], string> = {
+  immediate: 'border-red-300 bg-red-50',
+  'short-term': 'border-amber-300 bg-amber-50',
+  'long-term': 'border-green-300 bg-green-50',
+};
+
+const phaseTextColors: Record<RecommendationProfile['phase'], string> = {
+  immediate: 'text-red-700',
+  'short-term': 'text-amber-700',
+  'long-term': 'text-green-700',
+};
+
+const phaseIcons: Record<RecommendationProfile['phase'], typeof Zap> = {
+  immediate: Zap,
+  'short-term': Clock,
+  'long-term': Calendar,
+};
+
+const categories: RecommendationProfile['category'][] = ['process', 'training', 'technology', 'organization', 'risk-mitigation'];
+const phases: RecommendationProfile['phase'][] = ['immediate', 'short-term', 'long-term'];
+
+export function RecommendationsSection({ recommendationProfiles = [], onUpdateProfiles }: RecommendationsSectionProps) {
+  const [selectedRec, setSelectedRec] = useState<RecommendationProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<RecommendationProfile | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<RecommendationProfile['category'] | 'all'>('all');
+  const [phaseFilter, setPhaseFilter] = useState<RecommendationProfile['phase'] | 'all'>('all');
+  const [effortFilter, setEffortFilter] = useState<RecommendationProfile['levelOfEffort'] | 'all'>('all');
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set(['immediate', 'short-term', 'long-term']));
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [newText, setNewText] = useState('');
-  const [newPriority, setNewPriority] = useState<Priority>('medium');
-  const [editText, setEditText] = useState('');
-  const [editPriority, setEditPriority] = useState<Priority>('medium');
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState<RecommendationProfile['category']>('process');
 
-  const handleAdd = async () => {
-    if (!onUpdate || !newText.trim()) return;
-    const newRec = {
-      id: `rec-${Date.now()}`,
-      text: newText.trim(),
-      priority: newPriority,
+  // Filter profiles
+  const filteredProfiles = useMemo(() => {
+    let filtered = recommendationProfiles;
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(r => r.category === categoryFilter);
+    }
+
+    // Phase filter
+    if (phaseFilter !== 'all') {
+      filtered = filtered.filter(r => r.phase === phaseFilter);
+    }
+
+    // Effort filter
+    if (effortFilter !== 'all') {
+      filtered = filtered.filter(r => r.levelOfEffort === effortFilter);
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(r =>
+        r.title.toLowerCase().includes(query) ||
+        r.description.toLowerCase().includes(query) ||
+        r.problemAddressed.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [recommendationProfiles, categoryFilter, phaseFilter, effortFilter, searchQuery]);
+
+  // Group by phase
+  const groupedByPhase = useMemo(() => {
+    const groups: Record<RecommendationProfile['phase'], RecommendationProfile[]> = {
+      immediate: [],
+      'short-term': [],
+      'long-term': [],
     };
-    await onUpdate([...recommendations, newRec]);
-    setNewText('');
-    setNewPriority('medium');
+
+    filteredProfiles.forEach(profile => {
+      groups[profile.phase].push(profile);
+    });
+
+    return groups;
+  }, [filteredProfiles]);
+
+  // Count by phase (unfiltered for tabs)
+  const countByPhase = useMemo(() => {
+    const counts: Record<RecommendationProfile['phase'], number> = {
+      immediate: 0,
+      'short-term': 0,
+      'long-term': 0,
+    };
+
+    recommendationProfiles.forEach(profile => {
+      counts[profile.phase]++;
+    });
+
+    return counts;
+  }, [recommendationProfiles]);
+
+  // Unique roles for stats
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set<string>();
+    recommendationProfiles.forEach(r => cats.add(r.category));
+    return cats.size;
+  }, [recommendationProfiles]);
+
+  const togglePhase = (phase: string) => {
+    const newExpanded = new Set(expandedPhases);
+    if (newExpanded.has(phase)) {
+      newExpanded.delete(phase);
+    } else {
+      newExpanded.add(phase);
+    }
+    setExpandedPhases(newExpanded);
+  };
+
+  const handleAddNew = async () => {
+    if (!onUpdateProfiles || !newTitle.trim()) return;
+
+    const newProfile: RecommendationProfile = {
+      id: nanoid(),
+      title: newTitle.trim(),
+      description: newTitle.trim(),
+      priority: 'medium',
+      category: newCategory,
+      phase: 'short-term',
+      problemAddressed: 'To be defined',
+      scope: 'Organization-wide',
+      expectedImpact: 'Impact to be assessed',
+      levelOfEffort: 'medium',
+      dependencies: [],
+      relatedItems: {},
+      source: 'manual',
+      count: 0,
+      interviewIds: [],
+    };
+
+    await onUpdateProfiles([...recommendationProfiles, newProfile]);
+    setNewTitle('');
+    setNewCategory('process');
     setIsAdding(false);
+    // Open edit modal for the new recommendation
+    setEditingProfile(newProfile);
   };
 
-  const startEditing = (rec: Recommendation) => {
-    setEditingId(rec.id);
-    setEditText(rec.text);
-    setEditPriority(rec.priority);
-  };
+  const handleSaveEdit = async (updatedProfile: RecommendationProfile) => {
+    if (!onUpdateProfiles) return;
 
-  const handleEdit = async (id: string) => {
-    if (!onUpdate || !editText.trim()) return;
-    const updated = recommendations.map(rec =>
-      rec.id === id ? { ...rec, text: editText.trim(), priority: editPriority } : rec
+    const updated = recommendationProfiles.map(r =>
+      r.id === updatedProfile.id ? updatedProfile : r
     );
-    await onUpdate(updated);
-    setEditingId(null);
-    setEditText('');
+    await onUpdateProfiles(updated);
+    setEditingProfile(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!onUpdate) return;
-    await onUpdate(recommendations.filter(rec => rec.id !== id));
+    if (!onUpdateProfiles) return;
+    await onUpdateProfiles(recommendationProfiles.filter(r => r.id !== id));
+    setDeleteConfirm(null);
   };
 
-  // Group by priority
-  const highPriority = recommendations.filter(r => r.priority === 'high');
-  const mediumPriority = recommendations.filter(r => r.priority === 'medium');
-  const lowPriority = recommendations.filter(r => r.priority === 'low');
+  const canEdit = !!onUpdateProfiles;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2 mb-2">
@@ -77,10 +195,10 @@ export function RecommendationsSection({ recommendations, onUpdate }: Recommenda
             Recommendations & Roadmap
           </h2>
           <p className="text-slate-600">
-            {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} for improvement, generated from interview analysis.
+            {recommendationProfiles.length} recommendation{recommendationProfiles.length !== 1 ? 's' : ''} across {uniqueCategories} categories
           </p>
         </div>
-        {onUpdate && !isAdding && (
+        {canEdit && !isAdding && (
           <button
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -91,221 +209,237 @@ export function RecommendationsSection({ recommendations, onUpdate }: Recommenda
         )}
       </div>
 
-      {/* Add new recommendation form */}
+      {/* Add new form */}
       {isAdding && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-          <textarea
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            placeholder="Enter your recommendation..."
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-            rows={3}
-            autoFocus
+          <div className="flex items-center gap-3 mb-3">
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Enter recommendation title..."
+              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              autoFocus
+            />
+            <select
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value as RecommendationProfile['category'])}
+              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{categoryLabels[cat]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => { setIsAdding(false); setNewTitle(''); }}
+              className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddNew}
+              disabled={!newTitle.trim()}
+              className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            >
+              Add & Configure
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Phase tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
+        <button
+          onClick={() => setPhaseFilter('all')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            phaseFilter === 'all'
+              ? 'bg-slate-900 text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          All ({recommendationProfiles.length})
+        </button>
+        {phases.map(phase => {
+          const PhaseIcon = phaseIcons[phase];
+          return (
+            <button
+              key={phase}
+              onClick={() => setPhaseFilter(phase === phaseFilter ? 'all' : phase)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                phaseFilter === phase
+                  ? phaseColors[phase] + ' ' + phaseTextColors[phase]
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <PhaseIcon className="w-4 h-4" />
+              {phase === 'immediate' ? 'Immediate' : phase === 'short-term' ? 'Short-term' : 'Long-term'}
+              ({countByPhase[phase]})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search recommendations..."
+            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">Priority:</span>
-              <select
-                value={newPriority}
-                onChange={(e) => setNewPriority(e.target.value as Priority)}
-                className="px-2 py-1 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
+        </div>
+
+        {/* Category filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-400" />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as RecommendationProfile['category'] | 'all')}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{categoryLabels[cat]}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Effort filter */}
+        <select
+          value={effortFilter}
+          onChange={(e) => setEffortFilter(e.target.value as RecommendationProfile['levelOfEffort'] | 'all')}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        >
+          <option value="all">All Effort Levels</option>
+          <option value="low">Low Effort</option>
+          <option value="medium">Medium Effort</option>
+          <option value="high">High Effort</option>
+        </select>
+      </div>
+
+      {/* Content */}
+      {filteredProfiles.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <Lightbulb className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <p className="text-slate-500">No recommendations found.</p>
+          <p className="text-sm text-slate-400 mt-1">
+            {searchQuery || categoryFilter !== 'all' || phaseFilter !== 'all' || effortFilter !== 'all'
+              ? 'Try adjusting your filters.'
+              : 'Recommendations will appear when interviews are analyzed.'}
+          </p>
+        </div>
+      ) : phaseFilter !== 'all' ? (
+        // Filtered view - show cards directly
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredProfiles.map(profile => (
+            <RecommendationCard
+              key={profile.id}
+              profile={profile}
+              onClick={() => setSelectedRec(profile)}
+              onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+              onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+              canEdit={canEdit}
+            />
+          ))}
+        </div>
+      ) : (
+        // Grouped by phase view
+        <div className="space-y-6">
+          {phases.map(phase => {
+            const phaseRecs = groupedByPhase[phase];
+            if (phaseRecs.length === 0) return null;
+
+            const PhaseIcon = phaseIcons[phase];
+            const isExpanded = expandedPhases.has(phase);
+
+            return (
+              <div key={phase} className={`border rounded-xl overflow-hidden ${phaseColors[phase]}`}>
+                {/* Phase header */}
+                <button
+                  onClick={() => togglePhase(phase)}
+                  className={`w-full flex items-center justify-between p-4 ${phaseTextColors[phase]} hover:bg-white/30 transition-colors`}
+                >
+                  <div className="flex items-center gap-3">
+                    <PhaseIcon className="w-5 h-5" />
+                    <span className="font-semibold">{phaseLabels[phase]}</span>
+                    <span className="text-sm opacity-75">({phaseRecs.length} item{phaseRecs.length !== 1 ? 's' : ''})</span>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronDown className="w-5 h-5" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </button>
+
+                {/* Phase content */}
+                {isExpanded && (
+                  <div className="p-4 pt-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {phaseRecs.map(profile => (
+                        <RecommendationCard
+                          key={profile.id}
+                          profile={profile}
+                          onClick={() => setSelectedRec(profile)}
+                          onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+                          onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                          canEdit={canEdit}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Recommendation?</h3>
+            <p className="text-slate-600 mb-4">This action cannot be undone.</p>
+            <div className="flex gap-3">
               <button
-                onClick={() => { setIsAdding(false); setNewText(''); setNewPriority('medium'); }}
-                className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
               >
                 Cancel
               </button>
               <button
-                onClick={handleAdd}
-                disabled={!newText.trim()}
-                className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                onClick={() => handleDelete(deleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
-                Add
+                Delete
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Recommendations list */}
-      {recommendations.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-          <Lightbulb className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p className="text-slate-500">No recommendations yet.</p>
-          <p className="text-sm text-slate-400 mt-1">
-            Recommendations will be auto-generated when interviews are analyzed.
-            {onUpdate && ' You can also add recommendations manually.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* High Priority */}
-          {highPriority.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-red-700 uppercase tracking-wide mb-3">High Priority</h3>
-              <div className="space-y-3">
-                {highPriority.map((rec) => (
-                  <RecommendationCard
-                    key={rec.id}
-                    rec={rec}
-                    isEditing={editingId === rec.id}
-                    editText={editText}
-                    editPriority={editPriority}
-                    onEditTextChange={setEditText}
-                    onEditPriorityChange={setEditPriority}
-                    onStartEdit={() => startEditing(rec)}
-                    onSave={() => handleEdit(rec.id)}
-                    onCancel={() => setEditingId(null)}
-                    onDelete={() => handleDelete(rec.id)}
-                    canEdit={!!onUpdate}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Medium Priority */}
-          {mediumPriority.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-yellow-700 uppercase tracking-wide mb-3">Medium Priority</h3>
-              <div className="space-y-3">
-                {mediumPriority.map((rec) => (
-                  <RecommendationCard
-                    key={rec.id}
-                    rec={rec}
-                    isEditing={editingId === rec.id}
-                    editText={editText}
-                    editPriority={editPriority}
-                    onEditTextChange={setEditText}
-                    onEditPriorityChange={setEditPriority}
-                    onStartEdit={() => startEditing(rec)}
-                    onSave={() => handleEdit(rec.id)}
-                    onCancel={() => setEditingId(null)}
-                    onDelete={() => handleDelete(rec.id)}
-                    canEdit={!!onUpdate}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Low Priority */}
-          {lowPriority.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-green-700 uppercase tracking-wide mb-3">Low Priority</h3>
-              <div className="space-y-3">
-                {lowPriority.map((rec) => (
-                  <RecommendationCard
-                    key={rec.id}
-                    rec={rec}
-                    isEditing={editingId === rec.id}
-                    editText={editText}
-                    editPriority={editPriority}
-                    onEditTextChange={setEditText}
-                    onEditPriorityChange={setEditPriority}
-                    onStartEdit={() => startEditing(rec)}
-                    onSave={() => handleEdit(rec.id)}
-                    onCancel={() => setEditingId(null)}
-                    onDelete={() => handleDelete(rec.id)}
-                    canEdit={!!onUpdate}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface RecommendationCardProps {
-  rec: Recommendation;
-  isEditing: boolean;
-  editText: string;
-  editPriority: Priority;
-  onEditTextChange: (text: string) => void;
-  onEditPriorityChange: (priority: Priority) => void;
-  onStartEdit: () => void;
-  onSave: () => void;
-  onCancel: () => void;
-  onDelete: () => void;
-  canEdit: boolean;
-}
-
-function RecommendationCard({
-  rec,
-  isEditing,
-  editText,
-  editPriority,
-  onEditTextChange,
-  onEditPriorityChange,
-  onStartEdit,
-  onSave,
-  onCancel,
-  onDelete,
-  canEdit,
-}: RecommendationCardProps) {
-  const colors = priorityColors[rec.priority];
-
-  if (isEditing) {
-    return (
-      <div className={`p-4 rounded-lg border ${colors.bg} ${colors.border}`}>
-        <textarea
-          value={editText}
-          onChange={(e) => onEditTextChange(e.target.value)}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white"
-          rows={3}
-          autoFocus
+      {/* Detail modal */}
+      {selectedRec && (
+        <RecommendationDetailModal
+          profile={selectedRec}
+          onClose={() => setSelectedRec(null)}
         />
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-600">Priority:</span>
-            <select
-              value={editPriority}
-              onChange={(e) => onEditPriorityChange(e.target.value as Priority)}
-              className="px-2 py-1 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-            >
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={onCancel} className="p-1.5 text-slate-500 hover:bg-white/50 rounded"><X className="w-4 h-4" /></button>
-            <button onClick={onSave} className="p-1.5 text-emerald-600 hover:bg-white/50 rounded"><Check className="w-4 h-4" /></button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className={`p-4 rounded-lg border ${colors.bg} ${colors.border} group`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <p className="text-slate-900">{rec.text}</p>
-          <Badge
-            variant={rec.priority === 'high' ? 'red' : rec.priority === 'medium' ? 'yellow' : 'green'}
-            className="mt-2"
-          >
-            {rec.priority} priority
-          </Badge>
-        </div>
-        {canEdit && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onStartEdit} className={`p-1.5 ${colors.text} hover:bg-white/50 rounded`}><Edit2 className="w-4 h-4" /></button>
-            <button onClick={onDelete} className="p-1.5 text-red-500 hover:bg-white/50 rounded"><Trash2 className="w-4 h-4" /></button>
-          </div>
-        )}
-      </div>
+      {/* Edit modal */}
+      {editingProfile && (
+        <RecommendationEditModal
+          profile={editingProfile}
+          onSave={handleSaveEdit}
+          onClose={() => setEditingProfile(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep, ToolProfile, TrainingGapProfile } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -1507,6 +1507,322 @@ export function buildTrainingGapProfiles(interviews: Interview[]): TrainingGapPr
     if (severityDiff !== 0) return severityDiff;
 
     const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    return b.count - a.count;
+  });
+}
+
+/**
+ * Build recommendation profiles from interview data with structured fields
+ * and phased timeline for roadmap visualization
+ */
+export function buildRecommendationProfiles(interviews: Interview[]): RecommendationProfile[] {
+  const completedInterviews = interviews.filter(i => i.analysis_status === 'completed');
+
+  if (completedInterviews.length === 0) {
+    return [];
+  }
+
+  // Collect all data for cross-referencing
+  const allWorkflows: string[] = [];
+  const allTools: string[] = [];
+  const allRoles: string[] = [];
+  const allTrainingGaps: string[] = [];
+
+  completedInterviews.forEach(interview => {
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
+    const tools = (interview.tools as unknown as Tool[]) || [];
+    const roles = (interview.roles as unknown as Role[]) || [];
+    const trainingGaps = (interview.training_gaps as unknown as TrainingGap[]) || [];
+
+    workflows.forEach(w => {
+      if (!allWorkflows.includes(w.name.toLowerCase())) {
+        allWorkflows.push(w.name.toLowerCase());
+      }
+    });
+    tools.forEach(t => {
+      if (!allTools.includes(t.name.toLowerCase())) {
+        allTools.push(t.name.toLowerCase());
+      }
+    });
+    roles.forEach(r => {
+      if (!allRoles.includes(r.title.toLowerCase())) {
+        allRoles.push(r.title.toLowerCase());
+      }
+    });
+    trainingGaps.forEach(g => {
+      if (!allTrainingGaps.includes(g.area.toLowerCase())) {
+        allTrainingGaps.push(g.area.toLowerCase());
+      }
+    });
+  });
+
+  // Category detection patterns
+  const categoryPatterns: Record<RecommendationProfile['category'], RegExp[]> = {
+    'process': [/workflow/i, /process/i, /procedure/i, /streamline/i, /automate/i, /standardize/i],
+    'training': [/train/i, /skill/i, /learn/i, /educate/i, /knowledge/i, /competenc/i],
+    'technology': [/system/i, /software/i, /tool/i, /implement/i, /upgrade/i, /integrate/i],
+    'organization': [/team/i, /structure/i, /role/i, /responsibilit/i, /hire/i, /reorganize/i],
+    'risk-mitigation': [/risk/i, /prevent/i, /safeguard/i, /backup/i, /compliance/i, /security/i],
+  };
+
+  // Effort detection patterns
+  const effortPatterns = {
+    low: [/quick/i, /simple/i, /easy/i, /minor/i, /immediately/i],
+    high: [/major/i, /significant/i, /complex/i, /comprehensive/i, /overhaul/i, /large-scale/i],
+  };
+
+  // Helper function to detect category from text
+  function detectCategory(text: string): RecommendationProfile['category'] {
+    for (const [category, patterns] of Object.entries(categoryPatterns)) {
+      if (patterns.some(p => p.test(text))) {
+        return category as RecommendationProfile['category'];
+      }
+    }
+    return 'process'; // Default category
+  }
+
+  // Helper function to detect effort level from text
+  function detectEffort(text: string): RecommendationProfile['levelOfEffort'] {
+    if (effortPatterns.low.some(p => p.test(text))) return 'low';
+    if (effortPatterns.high.some(p => p.test(text))) return 'high';
+    return 'medium';
+  }
+
+  // Helper function to assign phase based on priority and effort
+  function assignPhase(priority: 'high' | 'medium' | 'low', effort: 'low' | 'medium' | 'high'): RecommendationProfile['phase'] {
+    if (priority === 'high' && effort !== 'high') return 'immediate';
+    if (priority === 'high' && effort === 'high') return 'short-term';
+    if (priority === 'medium') return 'short-term';
+    return 'long-term';
+  }
+
+  // Helper function to generate title from text
+  function generateTitle(text: string): string {
+    // Take first sentence or first 60 chars
+    const firstSentence = text.split(/[.!?]/)[0].trim();
+    if (firstSentence.length <= 60) return firstSentence;
+    return firstSentence.slice(0, 57) + '...';
+  }
+
+  // Helper function to find related items in text
+  function findRelatedItems(text: string): RecommendationProfile['relatedItems'] {
+    const textLower = text.toLowerCase();
+    const result: RecommendationProfile['relatedItems'] = {};
+
+    const matchedRoles = allRoles.filter(r => textLower.includes(r));
+    if (matchedRoles.length > 0) result.roles = matchedRoles;
+
+    const matchedWorkflows = allWorkflows.filter(w => textLower.includes(w));
+    if (matchedWorkflows.length > 0) result.workflows = matchedWorkflows;
+
+    const matchedTools = allTools.filter(t => textLower.includes(t));
+    if (matchedTools.length > 0) result.tools = matchedTools;
+
+    const matchedGaps = allTrainingGaps.filter(g => textLower.includes(g));
+    if (matchedGaps.length > 0) result.trainingGaps = matchedGaps;
+
+    return result;
+  }
+
+  // Aggregate recommendations from all sources
+  interface RecommendationAggregation {
+    id: string;
+    text: string;
+    priority: 'high' | 'medium' | 'low';
+    category: RecommendationProfile['category'];
+    count: number;
+    interviewIds: string[];
+    sourceType: 'recommendation' | 'pain-point' | 'training-gap' | 'handoff-risk';
+    sourceDescription?: string;
+    problemContext?: string;
+    affectedRoles?: string[];
+  }
+
+  const recommendationMap = new Map<string, RecommendationAggregation>();
+  const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+
+  completedInterviews.forEach(interview => {
+    // Note: recommendations field may not exist on older interviews (fallback to empty array)
+    const interviewData = interview as unknown as { recommendations?: { id: string; text: string; priority: 'high' | 'medium' | 'low'; category?: string }[] };
+    const recommendations = interviewData.recommendations || [];
+    const painPoints = (interview.pain_points as unknown as PainPoint[]) || [];
+    const trainingGaps = (interview.training_gaps as unknown as TrainingGap[]) || [];
+    const handoffRisks = (interview.handoff_risks as unknown as HandoffRisk[]) || [];
+
+    // From dedicated recommendations field
+    recommendations.forEach(rec => {
+      const key = rec.text.toLowerCase().slice(0, 60);
+      const existing = recommendationMap.get(key);
+      if (existing) {
+        existing.count++;
+        if (!existing.interviewIds.includes(interview.id)) {
+          existing.interviewIds.push(interview.id);
+        }
+        // Keep highest priority
+        if ((priorityOrder[rec.priority] || 0) > (priorityOrder[existing.priority] || 0)) {
+          existing.priority = rec.priority;
+        }
+      } else {
+        recommendationMap.set(key, {
+          id: rec.id || nanoid(),
+          text: rec.text,
+          priority: rec.priority,
+          category: (rec.category as RecommendationProfile['category']) || detectCategory(rec.text),
+          count: 1,
+          interviewIds: [interview.id],
+          sourceType: 'recommendation',
+        });
+      }
+    });
+
+    // From pain point suggested solutions
+    painPoints.forEach(pp => {
+      if (pp.suggestedSolution) {
+        const key = pp.suggestedSolution.toLowerCase().slice(0, 60);
+        const existing = recommendationMap.get(key);
+        if (existing) {
+          existing.count++;
+          if (!existing.interviewIds.includes(interview.id)) {
+            existing.interviewIds.push(interview.id);
+          }
+          // Enhance with additional context
+          if (!existing.problemContext) {
+            existing.problemContext = pp.description;
+          }
+          if (pp.affectedRoles && !existing.affectedRoles) {
+            existing.affectedRoles = pp.affectedRoles;
+          }
+        } else {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: pp.suggestedSolution,
+            priority: pp.severity === 'critical' ? 'high' : pp.severity === 'high' ? 'high' : 'medium',
+            category: 'process',
+            count: 1,
+            interviewIds: [interview.id],
+            sourceType: 'pain-point',
+            sourceDescription: `Pain point: ${pp.category}`,
+            problemContext: pp.description,
+            affectedRoles: pp.affectedRoles,
+          });
+        }
+      }
+    });
+
+    // From training gap suggested training
+    trainingGaps.forEach(gap => {
+      if (gap.suggestedTraining) {
+        const key = gap.suggestedTraining.toLowerCase().slice(0, 60);
+        const existing = recommendationMap.get(key);
+        if (existing) {
+          existing.count++;
+          if (!existing.interviewIds.includes(interview.id)) {
+            existing.interviewIds.push(interview.id);
+          }
+          if (!existing.problemContext) {
+            existing.problemContext = `Gap in ${gap.area}`;
+          }
+          if (gap.affectedRoles && !existing.affectedRoles) {
+            existing.affectedRoles = gap.affectedRoles;
+          }
+        } else {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: gap.suggestedTraining,
+            priority: gap.priority,
+            category: 'training',
+            count: 1,
+            interviewIds: [interview.id],
+            sourceType: 'training-gap',
+            sourceDescription: `Training gap: ${gap.area}`,
+            problemContext: `Current: ${gap.currentState}. Desired: ${gap.desiredState}`,
+            affectedRoles: gap.affectedRoles,
+          });
+        }
+      }
+    });
+
+    // From handoff risk mitigations
+    handoffRisks.forEach(risk => {
+      if (risk.mitigation) {
+        const key = risk.mitigation.toLowerCase().slice(0, 60);
+        const existing = recommendationMap.get(key);
+        if (existing) {
+          existing.count++;
+          if (!existing.interviewIds.includes(interview.id)) {
+            existing.interviewIds.push(interview.id);
+          }
+          if (!existing.problemContext) {
+            existing.problemContext = risk.description;
+          }
+          if (!existing.affectedRoles) {
+            existing.affectedRoles = [risk.fromRole, risk.toRole];
+          }
+        } else {
+          recommendationMap.set(key, {
+            id: nanoid(),
+            text: risk.mitigation,
+            priority: risk.riskLevel === 'high' ? 'high' : 'medium',
+            category: 'risk-mitigation',
+            count: 1,
+            interviewIds: [interview.id],
+            sourceType: 'handoff-risk',
+            sourceDescription: `Handoff risk: ${risk.fromRole} → ${risk.toRole}`,
+            problemContext: risk.description,
+            affectedRoles: [risk.fromRole, risk.toRole],
+          });
+        }
+      }
+    });
+  });
+
+  // Convert to RecommendationProfile array
+  const recommendationProfiles: RecommendationProfile[] = Array.from(recommendationMap.values()).map(agg => {
+    const effort = detectEffort(agg.text);
+    const phase = assignPhase(agg.priority, effort);
+    const relatedItems = findRelatedItems(agg.text);
+
+    // If we have affected roles from source, add them to related items
+    if (agg.affectedRoles && agg.affectedRoles.length > 0) {
+      relatedItems.roles = [...new Set([...(relatedItems.roles || []), ...agg.affectedRoles.map(r => r.toLowerCase())])];
+    }
+
+    // Generate scope from affected roles
+    const scope = agg.affectedRoles && agg.affectedRoles.length > 0
+      ? `Affects: ${agg.affectedRoles.join(', ')}`
+      : 'Organization-wide';
+
+    return {
+      id: agg.id,
+      title: generateTitle(agg.text),
+      description: agg.text,
+      priority: agg.priority,
+      category: agg.category,
+      phase,
+      problemAddressed: agg.problemContext || 'Identified need for improvement',
+      scope,
+      expectedImpact: 'Impact to be assessed',
+      levelOfEffort: effort,
+      effortDetails: undefined,
+      dependencies: [],
+      relatedItems,
+      source: 'auto',
+      sourceDescription: agg.sourceDescription || `From ${agg.sourceType}`,
+      count: agg.count,
+      interviewIds: agg.interviewIds,
+    };
+  });
+
+  // Sort by phase, then priority, then count
+  const phaseOrder = { immediate: 0, 'short-term': 1, 'long-term': 2 };
+
+  return recommendationProfiles.sort((a, b) => {
+    const phaseDiff = phaseOrder[a.phase] - phaseOrder[b.phase];
+    if (phaseDiff !== 0) return phaseDiff;
+
+    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
     if (priorityDiff !== 0) return priorityDiff;
 
     return b.count - a.count;
