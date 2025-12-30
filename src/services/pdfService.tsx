@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 import { Interview, CompanySummary } from '../types/database';
-import { InterviewAnalysis, CompanySummaryData } from '../types/analysis';
+import { CompanySummaryData } from '../types/analysis';
 import { formatDate } from '../utils/dateFormatters';
 
 // Define styles for PDF
@@ -59,7 +59,6 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
   },
   badge: {
-    display: 'inline-block',
     padding: '3px 8px',
     borderRadius: 4,
     fontSize: 8,
@@ -120,7 +119,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   stepNumber: {
-    display: 'inline-block',
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -141,7 +139,7 @@ export async function generateInterviewPDF(interview: Interview): Promise<Blob> 
   const tools = (interview.tools as any) || [];
   const roles = (interview.roles as any) || [];
   const trainingGaps = (interview.training_gaps as any) || [];
-  const handoffRisks = (interview.handoff_risks as any) || [];
+  // handoff_risks is available in interview but not currently rendered in PDF
 
   const doc = (
     <Document>
@@ -556,4 +554,318 @@ export function downloadPDF(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Executive Summary specific styles
+const execStyles = StyleSheet.create({
+  page: {
+    padding: 40,
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottom: '3pt solid #4F46E5',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+    marginBottom: 4,
+  },
+  companyName: {
+    fontSize: 18,
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 10,
+  },
+  metricBox: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    padding: 12,
+    borderRadius: 6,
+    textAlign: 'center',
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 9,
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 10,
+    paddingBottom: 4,
+    borderBottom: '1pt solid #E2E8F0',
+  },
+  maturityBox: {
+    backgroundColor: '#EEF2FF',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 16,
+    borderLeft: '4pt solid #4F46E5',
+  },
+  maturityLevel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+    marginBottom: 4,
+  },
+  maturityNotes: {
+    fontSize: 10,
+    color: '#475569',
+    lineHeight: 1.4,
+  },
+  findingItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  findingNumber: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#4F46E5',
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    lineHeight: 1.8,
+    marginRight: 10,
+  },
+  findingText: {
+    flex: 1,
+    fontSize: 10,
+    color: '#334155',
+    lineHeight: 1.5,
+  },
+  riskItem: {
+    backgroundColor: '#FEF2F2',
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 6,
+    borderLeft: '3pt solid #DC2626',
+  },
+  riskText: {
+    fontSize: 10,
+    color: '#991B1B',
+    lineHeight: 1.4,
+  },
+  recPhase: {
+    marginBottom: 12,
+  },
+  phaseBadge: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    padding: '3px 8px',
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  phaseImmediate: {
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+  },
+  phaseShortTerm: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+  },
+  phaseLongTerm: {
+    backgroundColor: '#DCFCE7',
+    color: '#166534',
+  },
+  recItem: {
+    fontSize: 10,
+    color: '#475569',
+    marginBottom: 4,
+    paddingLeft: 12,
+    lineHeight: 1.4,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    textAlign: 'center',
+    fontSize: 8,
+    color: '#94A3B8',
+    borderTop: '1pt solid #E2E8F0',
+    paddingTop: 10,
+  },
+});
+
+// Generate Executive Summary PDF (condensed 1-2 page version)
+export async function generateExecutiveSummaryPDF(summary: CompanySummary): Promise<Blob> {
+  const data = summary.summary_data as unknown as CompanySummaryData;
+
+  // Extract executive summary data
+  const execSummary = (data as unknown as {
+    executiveSummary?: {
+      narrativeSummary?: string;
+      keyFindings?: string[];
+      topRisks?: Array<{ id: string; text: string; rank: number }>;
+      topOpportunities?: Array<{ id: string; text: string; rank: number }>;
+      maturityLevel?: 1 | 2 | 3 | 4 | 5;
+      maturityNotes?: string;
+    };
+  }).executiveSummary;
+
+  const maturityLabels: Record<number, string> = {
+    1: 'Initial - Ad hoc processes',
+    2: 'Developing - Basic processes emerging',
+    3: 'Defined - Standardized processes',
+    4: 'Managed - Measured and controlled',
+    5: 'Optimized - Continuous improvement',
+  };
+
+  // Calculate metrics
+  const roleCount = Object.keys(data.roleDistribution || {}).length;
+  const workflowCount = data.topWorkflows?.length || 0;
+  const issueCount = data.criticalPainPoints?.length || 0;
+  const toolCount = data.commonTools?.length || 0;
+
+  // Separate recommendations by priority
+  const recommendations = data.recommendations || [];
+  const highPriority = recommendations.filter((r: { priority?: string }) => r.priority === 'high');
+  const mediumPriority = recommendations.filter((r: { priority?: string }) => r.priority === 'medium');
+  const lowPriority = recommendations.filter((r: { priority?: string }) => r.priority === 'low' || !r.priority);
+
+  const doc = (
+    <Document>
+      <Page size="A4" style={execStyles.page}>
+        {/* Header */}
+        <View style={execStyles.header}>
+          <Text style={execStyles.title}>EXECUTIVE SUMMARY</Text>
+          <Text style={execStyles.companyName}>{summary.title}</Text>
+          <Text style={execStyles.subtitle}>
+            Process Audit Report • {formatDate(summary.created_at)} • {data.totalInterviews || 0} interviews analyzed
+          </Text>
+        </View>
+
+        {/* Key Metrics */}
+        <View style={execStyles.metricsRow}>
+          <View style={execStyles.metricBox}>
+            <Text style={execStyles.metricValue}>{roleCount}</Text>
+            <Text style={execStyles.metricLabel}>Roles</Text>
+          </View>
+          <View style={execStyles.metricBox}>
+            <Text style={execStyles.metricValue}>{workflowCount}</Text>
+            <Text style={execStyles.metricLabel}>Workflows</Text>
+          </View>
+          <View style={execStyles.metricBox}>
+            <Text style={execStyles.metricValue}>{issueCount}</Text>
+            <Text style={execStyles.metricLabel}>Issues</Text>
+          </View>
+          <View style={execStyles.metricBox}>
+            <Text style={execStyles.metricValue}>{toolCount}</Text>
+            <Text style={execStyles.metricLabel}>Tools</Text>
+          </View>
+        </View>
+
+        {/* Maturity Assessment */}
+        {execSummary?.maturityLevel && (
+          <View style={execStyles.maturityBox}>
+            <Text style={execStyles.maturityLevel}>
+              Maturity Level: {execSummary.maturityLevel}/5 - {maturityLabels[execSummary.maturityLevel]?.split(' - ')[0]}
+            </Text>
+            {execSummary.maturityNotes && (
+              <Text style={execStyles.maturityNotes}>{execSummary.maturityNotes}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Key Findings */}
+        {execSummary?.keyFindings && execSummary.keyFindings.length > 0 && (
+          <View style={execStyles.section}>
+            <Text style={execStyles.sectionTitle}>Key Findings</Text>
+            {execSummary.keyFindings.slice(0, 5).map((finding, idx) => (
+              <View key={idx} style={execStyles.findingItem}>
+                <Text style={execStyles.findingNumber}>{idx + 1}</Text>
+                <Text style={execStyles.findingText}>{finding}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Critical Risks */}
+        {execSummary?.topRisks && execSummary.topRisks.length > 0 && (
+          <View style={execStyles.section}>
+            <Text style={execStyles.sectionTitle}>Critical Risks</Text>
+            {execSummary.topRisks.slice(0, 4).map((risk, idx) => (
+              <View key={idx} style={execStyles.riskItem}>
+                <Text style={execStyles.riskText}>• {risk.text}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Top Recommendations by Phase */}
+        {recommendations.length > 0 && (
+          <View style={execStyles.section}>
+            <Text style={execStyles.sectionTitle}>Top Recommendations</Text>
+
+            {highPriority.length > 0 && (
+              <View style={execStyles.recPhase}>
+                <Text style={{ ...execStyles.phaseBadge, ...execStyles.phaseImmediate }}>
+                  IMMEDIATE (0-30 days)
+                </Text>
+                {highPriority.slice(0, 3).map((rec: { text: string }, idx: number) => (
+                  <Text key={idx} style={execStyles.recItem}>• {rec.text}</Text>
+                ))}
+              </View>
+            )}
+
+            {mediumPriority.length > 0 && (
+              <View style={execStyles.recPhase}>
+                <Text style={{ ...execStyles.phaseBadge, ...execStyles.phaseShortTerm }}>
+                  SHORT-TERM (30-90 days)
+                </Text>
+                {mediumPriority.slice(0, 2).map((rec: { text: string }, idx: number) => (
+                  <Text key={idx} style={execStyles.recItem}>• {rec.text}</Text>
+                ))}
+              </View>
+            )}
+
+            {lowPriority.length > 0 && (
+              <View style={execStyles.recPhase}>
+                <Text style={{ ...execStyles.phaseBadge, ...execStyles.phaseLongTerm }}>
+                  LONG-TERM (90+ days)
+                </Text>
+                {lowPriority.slice(0, 2).map((rec: { text: string }, idx: number) => (
+                  <Text key={idx} style={execStyles.recItem}>• {rec.text}</Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Footer */}
+        <Text style={execStyles.footer}>
+          Generated by ConsultantAI • {new Date().toLocaleDateString()} • Powered by Claude AI
+        </Text>
+      </Page>
+    </Document>
+  );
+
+  return await pdf(doc).toBlob();
 }
