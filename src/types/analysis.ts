@@ -165,6 +165,41 @@ export interface ToolProfile {
   interviewIds: string[];
 }
 
+// Training Gap Profile for detailed capability analysis
+export interface TrainingGapProfile {
+  id: string;
+  area: string;
+  count: number;              // Interview mention count
+
+  // Classification
+  category: 'skill' | 'system' | 'process' | 'knowledge' | 'other';
+  priority: 'low' | 'medium' | 'high';
+
+  // Context
+  currentState: string;       // What's the current capability
+  desiredState: string;       // What should be achieved
+  suggestedTraining: string;  // Recommended approach
+
+  // Associations
+  affectedRoles: Array<{
+    role: string;
+    impact: string;           // How this role is affected
+    count: number;
+  }>;
+  relatedSystems: string[];   // Tools/systems related to this gap
+  relatedWorkflows: string[]; // Workflows impacted by this gap
+
+  // Risk Assessment
+  risk: {
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    description: string;      // What happens if not addressed
+    businessImpact: string;   // Operational/financial impact
+  };
+
+  // Traceability
+  interviewIds: string[];
+}
+
 // Role Profile for detailed role view
 export interface RoleProfile {
   id: string;

@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep, ToolProfile } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep, ToolProfile, TrainingGapProfile } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -1223,4 +1223,292 @@ export function buildToolProfiles(interviews: Interview[]): ToolProfile[] {
 
   // Sort by count descending
   return toolProfiles.sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Build comprehensive training gap profiles from interview data
+ * Aggregates gaps with category detection, risk analysis, and cross-references
+ */
+export function buildTrainingGapProfiles(interviews: Interview[]): TrainingGapProfile[] {
+  const completedInterviews = interviews.filter(i => i.analysis_status === 'completed');
+
+  // Category detection based on keywords
+  const categoryPatterns: Record<TrainingGapProfile['category'], RegExp[]> = {
+    system: [/software/i, /system/i, /tool/i, /application/i, /excel/i, /crm/i, /erp/i, /sap/i, /salesforce/i],
+    process: [/workflow/i, /process/i, /procedure/i, /steps/i, /handoff/i, /protocol/i],
+    skill: [/skill/i, /ability/i, /competenc/i, /expertise/i, /technique/i, /proficien/i],
+    knowledge: [/understand/i, /aware/i, /knowledge/i, /familiar/i, /concept/i, /training/i],
+    other: [],
+  };
+
+  // Collect all tool and workflow names for cross-referencing
+  const allToolNames = new Set<string>();
+  const allWorkflowNames = new Set<string>();
+
+  completedInterviews.forEach(interview => {
+    const tools = (interview.tools as unknown as Tool[]) || [];
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
+    tools.forEach(t => allToolNames.add(t.name.toLowerCase()));
+    workflows.forEach(w => allWorkflowNames.add(w.name.toLowerCase()));
+  });
+
+  const detectCategory = (area: string): TrainingGapProfile['category'] => {
+    const lowerArea = area.toLowerCase();
+
+    // First check if it matches a tool name
+    if (allToolNames.has(lowerArea) || Array.from(allToolNames).some(t => lowerArea.includes(t))) {
+      return 'system';
+    }
+
+    // Check if it matches a workflow name
+    if (allWorkflowNames.has(lowerArea) || Array.from(allWorkflowNames).some(w => lowerArea.includes(w))) {
+      return 'process';
+    }
+
+    // Check pattern matching
+    for (const [category, patterns] of Object.entries(categoryPatterns)) {
+      if (category !== 'other' && patterns.some(pattern => pattern.test(area))) {
+        return category as TrainingGapProfile['category'];
+      }
+    }
+
+    return 'other';
+  };
+
+  // Aggregate training gap data
+  const gapMap = new Map<string, {
+    area: string;
+    count: number;
+    category: TrainingGapProfile['category'];
+    priority: 'low' | 'medium' | 'high';
+    currentStates: string[];
+    desiredStates: string[];
+    suggestedTrainings: string[];
+    affectedRolesMap: Map<string, { role: string; impacts: Set<string>; count: number }>;
+    interviewIds: string[];
+  }>();
+
+  completedInterviews.forEach(interview => {
+    const gaps = (interview.training_gaps as unknown as TrainingGap[]) || [];
+
+    gaps.forEach(gap => {
+      const key = gap.area.toLowerCase().trim();
+      const existing = gapMap.get(key);
+
+      if (existing) {
+        existing.count++;
+        if (gap.currentState) existing.currentStates.push(gap.currentState);
+        if (gap.desiredState) existing.desiredStates.push(gap.desiredState);
+        if (gap.suggestedTraining) existing.suggestedTrainings.push(gap.suggestedTraining);
+
+        // Keep highest priority
+        if (gap.priority === 'high' || (gap.priority === 'medium' && existing.priority === 'low')) {
+          existing.priority = gap.priority;
+        }
+
+        // Aggregate roles
+        gap.affectedRoles.forEach(role => {
+          const roleKey = role.toLowerCase();
+          const roleData = existing.affectedRolesMap.get(roleKey);
+          if (roleData) {
+            roleData.count++;
+            if (gap.currentState) roleData.impacts.add(gap.currentState);
+          } else {
+            existing.affectedRolesMap.set(roleKey, {
+              role,
+              impacts: new Set(gap.currentState ? [gap.currentState] : []),
+              count: 1,
+            });
+          }
+        });
+
+        existing.interviewIds.push(interview.id);
+      } else {
+        const affectedRolesMap = new Map<string, { role: string; impacts: Set<string>; count: number }>();
+        gap.affectedRoles.forEach(role => {
+          affectedRolesMap.set(role.toLowerCase(), {
+            role,
+            impacts: new Set(gap.currentState ? [gap.currentState] : []),
+            count: 1,
+          });
+        });
+
+        gapMap.set(key, {
+          area: gap.area,
+          count: 1,
+          category: detectCategory(gap.area),
+          priority: gap.priority,
+          currentStates: gap.currentState ? [gap.currentState] : [],
+          desiredStates: gap.desiredState ? [gap.desiredState] : [],
+          suggestedTrainings: gap.suggestedTraining ? [gap.suggestedTraining] : [],
+          affectedRolesMap,
+          interviewIds: [interview.id],
+        });
+      }
+    });
+  });
+
+  // Find related systems and workflows for each gap
+  const findRelatedSystems = (area: string): string[] => {
+    const lowerArea = area.toLowerCase();
+    const related: string[] = [];
+    allToolNames.forEach(tool => {
+      if (lowerArea.includes(tool) || tool.includes(lowerArea.split(' ')[0])) {
+        // Find the proper-cased version
+        completedInterviews.forEach(interview => {
+          const tools = (interview.tools as unknown as Tool[]) || [];
+          tools.forEach(t => {
+            if (t.name.toLowerCase() === tool && !related.includes(t.name)) {
+              related.push(t.name);
+            }
+          });
+        });
+      }
+    });
+    return related;
+  };
+
+  const findRelatedWorkflows = (area: string, affectedRoles: string[]): string[] => {
+    const lowerArea = area.toLowerCase();
+    const related: string[] = [];
+
+    completedInterviews.forEach(interview => {
+      const workflows = (interview.workflows as unknown as Workflow[]) || [];
+      workflows.forEach(wf => {
+        // Check if workflow name matches gap area
+        if (lowerArea.includes(wf.name.toLowerCase()) || wf.name.toLowerCase().includes(lowerArea.split(' ')[0])) {
+          if (!related.includes(wf.name)) related.push(wf.name);
+        }
+        // Check if any affected roles participate in this workflow
+        const hasAffectedRole = wf.participants.some(p =>
+          affectedRoles.some(r => r.toLowerCase() === p.toLowerCase())
+        );
+        if (hasAffectedRole && !related.includes(wf.name)) {
+          related.push(wf.name);
+        }
+      });
+    });
+
+    return related.slice(0, 5); // Limit to top 5
+  };
+
+  // Calculate risk based on multiple factors
+  const calculateRisk = (
+    priority: 'low' | 'medium' | 'high',
+    affectedRoleCount: number,
+    relatedWorkflowCount: number,
+    count: number
+  ): TrainingGapProfile['risk'] => {
+    let score = 0;
+
+    // Priority weight
+    if (priority === 'high') score += 3;
+    else if (priority === 'medium') score += 2;
+    else score += 1;
+
+    // Affected role count
+    if (affectedRoleCount >= 3) score += 2;
+    else if (affectedRoleCount >= 2) score += 1;
+
+    // Related workflow count
+    if (relatedWorkflowCount >= 2) score += 2;
+    else if (relatedWorkflowCount >= 1) score += 1;
+
+    // Mention frequency
+    if (count >= 3) score += 2;
+    else if (count >= 2) score += 1;
+
+    // Calculate severity
+    let severity: 'low' | 'medium' | 'high' | 'critical';
+    if (score >= 8) severity = 'critical';
+    else if (score >= 6) severity = 'high';
+    else if (score >= 4) severity = 'medium';
+    else severity = 'low';
+
+    // Generate description based on factors
+    const factors: string[] = [];
+    if (priority === 'high') factors.push('high priority issue');
+    if (affectedRoleCount >= 3) factors.push(`affects ${affectedRoleCount} roles`);
+    if (relatedWorkflowCount >= 2) factors.push(`impacts ${relatedWorkflowCount} workflows`);
+    if (count >= 3) factors.push(`mentioned ${count} times`);
+
+    const description = factors.length > 0
+      ? `Risk factors: ${factors.join(', ')}`
+      : 'Standard training priority';
+
+    // Generate business impact
+    let businessImpact: string;
+    if (severity === 'critical') {
+      businessImpact = 'Critical operational risk - may cause significant delays, errors, or failures if not addressed immediately';
+    } else if (severity === 'high') {
+      businessImpact = 'High operational impact - likely causing inefficiencies and quality issues across multiple teams';
+    } else if (severity === 'medium') {
+      businessImpact = 'Moderate impact - affects productivity and may lead to inconsistent outcomes';
+    } else {
+      businessImpact = 'Low immediate impact - opportunity for incremental improvement';
+    }
+
+    return { severity, description, businessImpact };
+  };
+
+  // Build training gap profiles
+  const trainingGapProfiles: TrainingGapProfile[] = [];
+
+  gapMap.forEach((data) => {
+    const affectedRoles = Array.from(data.affectedRolesMap.values());
+    const relatedSystems = findRelatedSystems(data.area);
+    const relatedWorkflows = findRelatedWorkflows(
+      data.area,
+      affectedRoles.map(r => r.role)
+    );
+
+    // Override category if we found related systems or workflows
+    let category = data.category;
+    if (relatedSystems.length > 0 && category === 'other') {
+      category = 'system';
+    } else if (relatedWorkflows.length > 0 && category === 'other') {
+      category = 'process';
+    }
+
+    const risk = calculateRisk(
+      data.priority,
+      affectedRoles.length,
+      relatedWorkflows.length,
+      data.count
+    );
+
+    trainingGapProfiles.push({
+      id: nanoid(),
+      area: data.area,
+      count: data.count,
+      category,
+      priority: data.priority,
+      currentState: data.currentStates[0] || 'Not documented',
+      desiredState: data.desiredStates[0] || 'Not specified',
+      suggestedTraining: data.suggestedTrainings[0] || 'Training approach to be determined',
+      affectedRoles: affectedRoles.map(r => ({
+        role: r.role,
+        impact: Array.from(r.impacts).join('; ') || 'General capability gap',
+        count: r.count,
+      })).sort((a, b) => b.count - a.count),
+      relatedSystems,
+      relatedWorkflows,
+      risk,
+      interviewIds: data.interviewIds,
+    });
+  });
+
+  // Sort by risk severity, then priority, then count
+  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+
+  return trainingGapProfiles.sort((a, b) => {
+    const severityDiff = severityOrder[a.risk.severity] - severityOrder[b.risk.severity];
+    if (severityDiff !== 0) return severityDiff;
+
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    return b.count - a.count;
+  });
 }
