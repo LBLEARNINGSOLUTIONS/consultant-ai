@@ -403,7 +403,17 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
         );
 
       case 'exports':
-        return <ExportsSection summary={summary} />;
+        return (
+          <ExportsSection
+            summary={summary}
+            interviews={interviews}
+            roleProfiles={roleProfiles}
+            workflowProfiles={workflowProfiles}
+            toolProfiles={toolProfiles}
+            trainingGapProfiles={trainingGapProfiles}
+            recommendationProfiles={recommendationProfiles}
+          />
+        );
 
       default:
         return null;

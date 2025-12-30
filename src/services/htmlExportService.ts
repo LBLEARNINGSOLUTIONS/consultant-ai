@@ -1,5 +1,5 @@
-import { CompanySummary } from '../types/database';
-import { CompanySummaryData } from '../types/analysis';
+import { CompanySummary, Interview } from '../types/database';
+import { CompanySummaryData, WorkflowProfile, RoleProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../types/analysis';
 import { formatDate } from '../utils/dateFormatters';
 
 // SVG Icons (lucide-style)
@@ -13,7 +13,12 @@ const icons = {
   graduationCap: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>`,
   lightbulb: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg>`,
   fileSearch: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v3"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M5 17a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="m9 18-1.5-1.5"></path></svg>`,
-  arrowLeft: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+  workflow: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"></rect><rect x="15" y="3" width="6" height="6" rx="1"></rect><rect x="9" y="15" width="6" height="6" rx="1"></rect><path d="M6 9v3a1 1 0 0 0 1 1h4"></path><path d="M18 9v3a1 1 0 0 1-1 1h-4"></path></svg>`,
+  zap: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+  clock: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+  calendar: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
+  arrowRight: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`,
+  info: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
 };
 
 // Navigation items matching SummaryNav.tsx
@@ -29,8 +34,19 @@ const navItems = [
   { id: 'evidence', label: 'Supporting Evidence', icon: icons.fileSearch },
 ];
 
+// Extended interface for export with profiles
+interface HTMLExportData {
+  summary: CompanySummary;
+  interviews?: Interview[];
+  workflowProfiles?: WorkflowProfile[];
+  roleProfiles?: RoleProfile[];
+  toolProfiles?: ToolProfile[];
+  trainingGapProfiles?: TrainingGapProfile[];
+  recommendationProfiles?: RecommendationProfile[];
+}
+
 // Generate a self-contained HTML export of the company summary
-export function generateHTMLExport(summary: CompanySummary): string {
+export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<HTMLExportData>): string {
   const data = summary.summary_data as unknown as CompanySummaryData;
   const generatedDate = formatDate(new Date().toISOString());
   const auditDate = formatDate(summary.created_at);
@@ -53,6 +69,13 @@ export function generateHTMLExport(summary: CompanySummary): string {
     projectGoals?: string;
   } }).companyContext;
 
+  // Use profile data if available, fallback to summary data
+  const workflowProfiles = extraData?.workflowProfiles || [];
+  const roleProfiles = extraData?.roleProfiles || [];
+  const toolProfiles = extraData?.toolProfiles || [];
+  const trainingGapProfiles = extraData?.trainingGapProfiles || [];
+  const recommendationProfiles = extraData?.recommendationProfiles || [];
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,27 +97,53 @@ export function generateHTMLExport(summary: CompanySummary): string {
       --slate-700: #334155;
       --slate-800: #1E293B;
       --slate-900: #0F172A;
+      --red-50: #FEF2F2;
       --red-100: #FEE2E2;
+      --red-200: #FECACA;
+      --red-500: #EF4444;
       --red-600: #DC2626;
+      --red-700: #B91C1C;
+      --orange-50: #FFF7ED;
+      --orange-100: #FFEDD5;
+      --orange-200: #FED7AA;
+      --orange-500: #F97316;
+      --orange-600: #EA580C;
+      --amber-50: #FFFBEB;
       --amber-100: #FEF3C7;
+      --amber-200: #FDE68A;
+      --amber-500: #F59E0B;
       --amber-600: #D97706;
+      --green-50: #F0FDF4;
       --green-100: #DCFCE7;
+      --green-200: #BBF7D0;
+      --green-500: #22C55E;
       --green-600: #16A34A;
+      --emerald-50: #ECFDF5;
+      --emerald-100: #D1FAE5;
+      --emerald-200: #A7F3D0;
+      --emerald-600: #059669;
+      --blue-50: #EFF6FF;
       --blue-100: #DBEAFE;
+      --blue-200: #BFDBFE;
+      --blue-500: #3B82F6;
       --blue-600: #2563EB;
+      --indigo-50: #EEF2FF;
+      --indigo-100: #E0E7FF;
+      --indigo-200: #C7D2FE;
+      --indigo-500: #6366F1;
+      --indigo-600: #4F46E5;
+      --purple-50: #FAF5FF;
       --purple-100: #F3E8FF;
+      --purple-200: #E9D5FF;
+      --purple-500: #A855F7;
       --purple-600: #9333EA;
+      --cyan-50: #ECFEFF;
+      --cyan-100: #CFFAFE;
+      --cyan-600: #0891B2;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -111,30 +160,16 @@ export function generateHTMLExport(summary: CompanySummary): string {
       min-height: 100vh;
     }
 
-    /* Header - Full Width */
+    /* Header */
     .header {
       grid-column: 1 / -1;
       background: linear-gradient(135deg, var(--primary) 0%, #7C3AED 100%);
       color: white;
-      padding: 1.5rem 2rem;
+      padding: 1.25rem 2rem;
     }
 
-    .header-content {
-      max-width: 100%;
-    }
-
-    .header h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-
-    .header-meta {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-      opacity: 0.9;
-    }
+    .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .header-meta { display: flex; gap: 1.5rem; font-size: 0.875rem; opacity: 0.9; }
 
     /* Sidebar Navigation */
     .sidebar {
@@ -143,14 +178,11 @@ export function generateHTMLExport(summary: CompanySummary): string {
       padding: 1rem 0;
       position: sticky;
       top: 0;
-      height: calc(100vh - 80px);
+      height: calc(100vh - 72px);
       overflow-y: auto;
     }
 
-    .nav-list {
-      list-style: none;
-      padding: 0.5rem;
-    }
+    .nav-list { list-style: none; padding: 0.5rem; }
 
     .nav-item {
       display: flex;
@@ -163,28 +195,12 @@ export function generateHTMLExport(summary: CompanySummary): string {
       margin-bottom: 0.25rem;
       transition: all 0.15s ease;
       cursor: pointer;
-    }
-
-    .nav-item:hover {
-      background: var(--slate-100);
-      color: var(--slate-900);
-    }
-
-    .nav-item.active {
-      background: var(--primary-light);
-      color: var(--primary);
-      font-weight: 500;
-    }
-
-    .nav-icon {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-    }
-
-    .nav-label {
       font-size: 0.875rem;
     }
+
+    .nav-item:hover { background: var(--slate-100); color: var(--slate-900); }
+    .nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 500; }
+    .nav-icon { flex-shrink: 0; width: 20px; height: 20px; }
 
     /* Content Area */
     .content {
@@ -193,16 +209,13 @@ export function generateHTMLExport(summary: CompanySummary): string {
       overflow-y: auto;
     }
 
-    .content-inner {
-      max-width: 1024px;
-      margin: 0 auto;
-    }
+    .content-inner { max-width: 1024px; margin: 0 auto; }
 
     /* Section Styling */
     .section {
       background: white;
       border-radius: 0.75rem;
-      padding: 2rem;
+      padding: 1.5rem;
       margin-bottom: 1.5rem;
       border: 1px solid var(--slate-200);
     }
@@ -212,245 +225,375 @@ export function generateHTMLExport(summary: CompanySummary): string {
       align-items: center;
       gap: 0.75rem;
       margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
+      padding-bottom: 0.75rem;
       border-bottom: 2px solid var(--primary-light);
     }
 
-    .section-icon {
-      color: var(--primary);
-      flex-shrink: 0;
-    }
-
-    .section-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--slate-900);
-    }
+    .section-icon { color: var(--primary); flex-shrink: 0; }
+    .section-title { font-size: 1.25rem; font-weight: 700; color: var(--slate-900); }
 
     /* Metrics Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
 
     .metric-card {
       text-align: center;
-      padding: 1.25rem;
+      padding: 1rem;
       background: var(--slate-50);
       border-radius: 0.75rem;
       border: 1px solid var(--slate-200);
     }
 
-    .metric-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--primary);
+    .metric-value { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+    .metric-label { font-size: 0.75rem; color: var(--slate-500); margin-top: 0.25rem; }
+
+    /* Subsection Card */
+    .subsection {
+      background: var(--slate-50);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
     }
 
-    .metric-label {
-      font-size: 0.8rem;
-      color: var(--slate-500);
-      margin-top: 0.25rem;
+    .subsection-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--slate-800);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    /* Card Grid */
-    .card-grid {
+    /* Profile Cards Grid */
+    .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 1rem;
     }
 
-    .card {
-      background: var(--slate-50);
+    /* Profile Card */
+    .profile-card {
+      background: white;
+      border: 1px solid var(--slate-200);
       border-radius: 0.75rem;
-      padding: 1.25rem;
-      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      transition: box-shadow 0.15s;
     }
 
-    .card h3 {
-      font-size: 1rem;
-      color: var(--slate-900);
-      margin-bottom: 0.5rem;
+    .profile-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+    .profile-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
     }
 
-    .card p {
-      font-size: 0.875rem;
-      color: var(--slate-600);
+    .profile-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .profile-icon-box.purple { background: var(--purple-100); color: var(--purple-600); }
+    .profile-icon-box.blue { background: var(--blue-100); color: var(--blue-600); }
+    .profile-icon-box.indigo { background: var(--indigo-100); color: var(--indigo-600); }
+    .profile-icon-box.green { background: var(--green-100); color: var(--green-600); }
+    .profile-icon-box.amber { background: var(--amber-100); color: var(--amber-600); }
+    .profile-icon-box.red { background: var(--red-100); color: var(--red-600); }
+    .profile-icon-box.cyan { background: var(--cyan-100); color: var(--cyan-600); }
+
+    .profile-card-title { font-size: 0.95rem; font-weight: 600; color: var(--slate-900); }
+    .profile-card-meta { font-size: 0.75rem; color: var(--slate-500); margin-top: 0.125rem; }
+
+    .profile-card-content { font-size: 0.85rem; color: var(--slate-600); }
+    .profile-card-content p { margin-bottom: 0.5rem; }
+
+    .profile-card-footer {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--slate-100);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.75rem;
     }
 
     /* Badges */
     .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
       border-radius: 9999px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 500;
-      margin-right: 0.5rem;
-      margin-bottom: 0.5rem;
     }
 
-    .badge-red { background: var(--red-100); color: var(--red-600); }
+    .badge-red { background: var(--red-100); color: var(--red-700); }
+    .badge-orange { background: var(--orange-100); color: var(--orange-600); }
     .badge-amber { background: var(--amber-100); color: var(--amber-600); }
     .badge-green { background: var(--green-100); color: var(--green-600); }
+    .badge-emerald { background: var(--emerald-100); color: var(--emerald-600); }
     .badge-blue { background: var(--blue-100); color: var(--blue-600); }
+    .badge-indigo { background: var(--indigo-100); color: var(--indigo-600); }
     .badge-purple { background: var(--purple-100); color: var(--purple-600); }
+    .badge-cyan { background: var(--cyan-100); color: var(--cyan-600); }
+    .badge-slate { background: var(--slate-100); color: var(--slate-600); }
 
-    .severity-critical { border-left-color: var(--red-600); }
-    .severity-high { border-left-color: #F59E0B; }
-    .severity-medium { border-left-color: var(--amber-600); }
-    .severity-low { border-left-color: var(--slate-400); }
+    .badge-sm { font-size: 0.65rem; padding: 0.125rem 0.5rem; }
 
-    /* Lists */
-    .list {
-      list-style: none;
-    }
-
-    .list li {
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--slate-100);
-    }
-
-    .list li:last-child {
-      border-bottom: none;
-    }
-
-    /* Roles Grid */
-    .roles-grid {
+    /* Tags row */
+    .tags-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      gap: 0.375rem;
+      margin-top: 0.5rem;
     }
 
-    .role-tag {
-      background: var(--purple-100);
-      color: var(--purple-600);
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      background: var(--slate-100);
+      color: var(--slate-600);
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
     }
 
-    .role-count {
-      background: white;
-      padding: 0.125rem 0.5rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      margin-left: 0.5rem;
-    }
+    /* Findings/Risks lists */
+    .findings-list { list-style: none; }
 
-    /* Finding Item */
-    .finding-item {
+    .findings-list li {
       display: flex;
-      gap: 1rem;
-      padding: 1rem;
+      gap: 0.75rem;
+      padding: 0.75rem;
       background: var(--slate-50);
       border-radius: 0.5rem;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
     }
 
     .finding-number {
-      width: 2rem;
-      height: 2rem;
-      background: var(--primary);
+      width: 1.5rem;
+      height: 1.5rem;
+      background: var(--amber-500);
       color: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 0.75rem;
       font-weight: 600;
       flex-shrink: 0;
     }
 
-    /* Maturity Box */
-    .maturity-box {
-      background: var(--primary-light);
-      padding: 1rem 1.25rem;
+    /* Risk/Opportunity boxes */
+    .risk-opp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .risk-box {
+      background: var(--red-50);
+      border: 1px solid var(--red-200);
       border-radius: 0.5rem;
-      margin-bottom: 1.5rem;
-      border-left: 4px solid var(--primary);
+      padding: 1rem;
     }
 
-    .maturity-level {
-      font-size: 1.25rem;
+    .opp-box {
+      background: var(--emerald-50);
+      border: 1px solid var(--emerald-200);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+
+    .risk-box h4, .opp-box h4 {
+      font-size: 0.875rem;
       font-weight: 600;
-      color: var(--primary);
+      margin-bottom: 0.75rem;
     }
 
-    /* Recommendation Phases */
-    .recommendation-phase {
-      margin-bottom: 2rem;
+    .risk-box h4 { color: var(--red-700); }
+    .opp-box h4 { color: var(--emerald-600); }
+
+    .risk-box ol, .opp-box ol {
+      list-style: none;
+      counter-reset: item;
+    }
+
+    .risk-box li, .opp-box li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .risk-box li::before, .opp-box li::before {
+      counter-increment: item;
+      content: counter(item);
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .risk-box li::before { background: var(--red-500); color: white; }
+    .opp-box li::before { background: var(--emerald-600); color: white; }
+
+    /* Maturity Assessment */
+    .maturity-box {
+      background: var(--slate-50);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .maturity-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .maturity-level-badge {
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .maturity-1 { background: var(--red-100); color: var(--red-700); }
+    .maturity-2 { background: var(--orange-100); color: var(--orange-600); }
+    .maturity-3 { background: var(--amber-100); color: var(--amber-600); }
+    .maturity-4 { background: var(--blue-100); color: var(--blue-600); }
+    .maturity-5 { background: var(--green-100); color: var(--green-600); }
+
+    .maturity-bar {
+      height: 8px;
+      background: var(--slate-200);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+
+    .maturity-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+    /* Phase sections */
+    .phase-section {
+      margin-bottom: 1.5rem;
     }
 
     .phase-header {
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
       margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid var(--slate-200);
     }
 
-    .phase-badge {
-      padding: 0.25rem 0.75rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+    .phase-immediate { background: var(--red-50); border: 1px solid var(--red-200); }
+    .phase-short { background: var(--amber-50); border: 1px solid var(--amber-200); }
+    .phase-long { background: var(--green-50); border: 1px solid var(--green-200); }
+
+    .phase-title { font-weight: 600; font-size: 0.9rem; }
+    .phase-count { font-size: 0.75rem; color: var(--slate-500); margin-left: auto; }
+
+    /* Info banner */
+    .info-banner {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: var(--blue-50);
+      border: 1px solid var(--blue-200);
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
     }
 
-    .phase-immediate { background: var(--red-100); color: var(--red-600); }
-    .phase-short-term { background: var(--amber-100); color: var(--amber-600); }
-    .phase-long-term { background: var(--green-100); color: var(--green-600); }
+    .info-banner-icon { color: var(--blue-600); flex-shrink: 0; }
+    .info-banner-content h4 { font-size: 0.875rem; font-weight: 600; color: var(--blue-800); }
+    .info-banner-content p { font-size: 0.8rem; color: var(--blue-700); margin-top: 0.25rem; }
 
-    /* Info Grid */
-    .info-grid {
+    /* Evidence stats */
+    .evidence-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
       margin-bottom: 1rem;
     }
 
-    .info-item {
-      padding: 1rem;
-      background: var(--slate-50);
-      border-radius: 0.5rem;
-    }
-
-    .info-label {
-      font-size: 0.75rem;
-      color: var(--slate-500);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.25rem;
-    }
-
-    .info-value {
-      font-size: 0.9rem;
-      color: var(--slate-800);
-    }
-
-    /* Interview List */
-    .interview-item {
+    .evidence-stat {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 0.75rem;
       padding: 1rem;
-      background: var(--slate-50);
+      background: white;
+      border: 1px solid var(--slate-200);
       border-radius: 0.5rem;
-      margin-bottom: 0.5rem;
     }
 
-    .interview-title {
-      font-weight: 500;
+    .evidence-stat-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .evidence-stat-value { font-size: 1.25rem; font-weight: 700; color: var(--slate-900); }
+    .evidence-stat-label { font-size: 0.75rem; color: var(--slate-500); }
+
+    /* Pain point cards */
+    .pain-point-card {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      border-left: 4px solid;
+    }
+
+    .pain-point-card.critical { background: var(--red-50); border-left-color: var(--red-500); }
+    .pain-point-card.high { background: var(--orange-50); border-left-color: var(--orange-500); }
+    .pain-point-card.medium { background: var(--amber-50); border-left-color: var(--amber-500); }
+    .pain-point-card.low { background: var(--slate-50); border-left-color: var(--slate-400); }
+
+    /* Handoff card */
+    .handoff-card {
+      padding: 1rem;
+      background: var(--orange-50);
+      border: 1px solid var(--orange-200);
+      border-left: 4px solid var(--orange-500);
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .handoff-flow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
       color: var(--slate-800);
+      margin-bottom: 0.375rem;
     }
 
-    .interview-date {
-      font-size: 0.875rem;
-      color: var(--slate-500);
-    }
+    .handoff-process { font-size: 0.85rem; color: var(--slate-600); }
 
     /* Footer */
     .footer {
@@ -459,51 +602,26 @@ export function generateHTMLExport(summary: CompanySummary): string {
       color: var(--slate-500);
       font-size: 0.875rem;
       background: white;
-      border-top: 1px solid var(--slate-200);
+      border-radius: 0.75rem;
+      border: 1px solid var(--slate-200);
     }
 
-    /* Print Styles */
+    /* Print & Mobile */
     @media print {
-      .app-container {
-        display: block;
-      }
-      .sidebar {
-        display: none;
-      }
-      .content {
-        padding: 0;
-      }
-      .section {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .header {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
+      .app-container { display: block; }
+      .sidebar { display: none; }
+      .content { padding: 0; }
+      .section { break-inside: avoid; page-break-inside: avoid; }
+      .header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
 
-    /* Mobile Styles */
     @media (max-width: 768px) {
-      .app-container {
-        grid-template-columns: 1fr;
-      }
-      .sidebar {
-        display: none;
-      }
-      .header h1 {
-        font-size: 1.25rem;
-      }
-      .header-meta {
-        flex-direction: column;
-        gap: 0.25rem;
-      }
-      .section {
-        padding: 1.5rem;
-      }
-      .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .app-container { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .risk-opp-grid { grid-template-columns: 1fr; }
+      .evidence-stats { grid-template-columns: repeat(2, 1fr); }
+      .cards-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -511,13 +629,11 @@ export function generateHTMLExport(summary: CompanySummary): string {
   <div class="app-container">
     <!-- Header -->
     <header class="header">
-      <div class="header-content">
-        <h1>${escapeHtml(summary.title)}</h1>
-        <div class="header-meta">
-          <span>Process Audit Summary</span>
-          <span>${data.totalInterviews || 0} interviews analyzed</span>
-          <span>Generated ${generatedDate}</span>
-        </div>
+      <h1>${escapeHtml(summary.title)}</h1>
+      <div class="header-meta">
+        <span>Process Audit Summary</span>
+        <span>${data.totalInterviews || 0} interviews analyzed</span>
+        <span>Generated ${generatedDate}</span>
       </div>
     </header>
 
@@ -528,7 +644,7 @@ export function generateHTMLExport(summary: CompanySummary): string {
           <li>
             <a href="#${item.id}" class="nav-item${index === 0 ? ' active' : ''}" data-section="${item.id}">
               <span class="nav-icon">${item.icon}</span>
-              <span class="nav-label">${item.label}</span>
+              <span>${item.label}</span>
             </a>
           </li>
         `).join('')}
@@ -546,19 +662,6 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Executive Summary</h2>
           </div>
 
-          ${execSummary?.narrativeSummary ? `
-            <p style="margin-bottom: 1.5rem; font-size: 1rem; line-height: 1.7;">${escapeHtml(execSummary.narrativeSummary)}</p>
-          ` : `
-            <p style="margin-bottom: 1.5rem; color: var(--slate-500);">Executive summary not yet written.</p>
-          `}
-
-          ${execSummary?.maturityLevel ? `
-            <div class="maturity-box">
-              <div class="maturity-level">Maturity Level: ${execSummary.maturityLevel}/5</div>
-              ${execSummary.maturityNotes ? `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--slate-600);">${escapeHtml(execSummary.maturityNotes)}</p>` : ''}
-            </div>
-          ` : ''}
-
           <!-- Key Metrics -->
           <div class="metrics-grid">
             <div class="metric-card">
@@ -571,37 +674,84 @@ export function generateHTMLExport(summary: CompanySummary): string {
             </div>
             <div class="metric-card">
               <div class="metric-value">${data.criticalPainPoints?.length || 0}</div>
-              <div class="metric-label">Issues</div>
+              <div class="metric-label">Critical Issues</div>
             </div>
             <div class="metric-card">
-              <div class="metric-value">${data.commonTools?.length || 0}</div>
-              <div class="metric-label">Tools</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">${Object.keys(data.roleDistribution || {}).length}</div>
-              <div class="metric-label">Roles</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">${data.recommendations?.length || 0}</div>
-              <div class="metric-label">Recommendations</div>
+              <div class="metric-value">${data.highRiskHandoffs?.length || 0}</div>
+              <div class="metric-label">High-Risk Handoffs</div>
             </div>
           </div>
 
+          <!-- Summary Narrative -->
+          <div class="subsection">
+            <div class="subsection-title">${icons.fileText} Summary</div>
+            ${execSummary?.narrativeSummary
+              ? `<p style="font-size: 0.9rem; line-height: 1.7; color: var(--slate-700);">${escapeHtml(execSummary.narrativeSummary)}</p>`
+              : `<p style="font-size: 0.9rem; color: var(--slate-500); font-style: italic;">Executive summary not yet written.</p>`
+            }
+          </div>
+
+          <!-- Key Findings -->
           ${execSummary?.keyFindings?.length ? `
-            <h3 style="font-size: 1.125rem; margin: 1.5rem 0 1rem; color: var(--slate-800);">Key Findings</h3>
-            ${execSummary.keyFindings.slice(0, 5).map((finding, idx) => `
-              <div class="finding-item">
-                <span class="finding-number">${idx + 1}</span>
-                <span>${escapeHtml(finding)}</span>
-              </div>
-            `).join('')}
+          <div class="subsection">
+            <div class="subsection-title">${icons.lightbulb} Key Findings</div>
+            <ul class="findings-list">
+              ${execSummary.keyFindings.map((finding, idx) => `
+                <li>
+                  <span class="finding-number">${idx + 1}</span>
+                  <span>${escapeHtml(finding)}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
           ` : ''}
 
-          ${execSummary?.topRisks?.length ? `
-            <h3 style="font-size: 1.125rem; margin: 1.5rem 0 1rem; color: var(--slate-800);">Critical Risks</h3>
-            <ul class="list">
-              ${execSummary.topRisks.slice(0, 5).map(risk => `<li><span class="badge badge-red">Risk</span> ${escapeHtml(risk.text)}</li>`).join('')}
+          <!-- Risks & Opportunities -->
+          ${(execSummary?.topRisks?.length || execSummary?.topOpportunities?.length) ? `
+          <div class="risk-opp-grid">
+            <div class="risk-box">
+              <h4>${icons.alertTriangle} Top Risks</h4>
+              <ol>
+                ${(execSummary?.topRisks || []).slice(0, 5).map(r => `<li>${escapeHtml(r.text)}</li>`).join('')}
+                ${!execSummary?.topRisks?.length ? '<li style="color: var(--slate-500); font-style: italic;">No risks identified</li>' : ''}
+              </ol>
+            </div>
+            <div class="opp-box">
+              <h4>${icons.lightbulb} Top Opportunities</h4>
+              <ol>
+                ${(execSummary?.topOpportunities || []).slice(0, 5).map(o => `<li>${escapeHtml(o.text)}</li>`).join('')}
+                ${!execSummary?.topOpportunities?.length ? '<li style="color: var(--slate-500); font-style: italic;">No opportunities identified</li>' : ''}
+              </ol>
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- Maturity Assessment -->
+          ${execSummary?.maturityLevel ? `
+          <div class="maturity-box">
+            <div class="subsection-title">Readiness & Maturity Assessment</div>
+            <div class="maturity-header">
+              <span class="maturity-level-badge maturity-${execSummary.maturityLevel}">
+                Level ${execSummary.maturityLevel}/5 - ${getMaturityLabel(execSummary.maturityLevel)}
+              </span>
+            </div>
+            <div class="maturity-bar">
+              <div class="maturity-fill maturity-${execSummary.maturityLevel}" style="width: ${execSummary.maturityLevel * 20}%; background: ${getMaturityColor(execSummary.maturityLevel)};"></div>
+            </div>
+            ${execSummary.maturityNotes ? `<p style="font-size: 0.85rem; color: var(--slate-600);">${escapeHtml(execSummary.maturityNotes)}</p>` : ''}
+          </div>
+          ` : ''}
+
+          <!-- Priority Recommendations Preview -->
+          ${data.recommendations?.filter(r => r.priority === 'high').length ? `
+          <div class="subsection" style="background: var(--indigo-50); border: 1px solid var(--indigo-200);">
+            <div class="subsection-title" style="color: var(--indigo-700);">${icons.zap} Priority Recommendations</div>
+            <ul style="list-style: none; font-size: 0.85rem;">
+              ${data.recommendations.filter(r => r.priority === 'high').slice(0, 3).map(r => `
+                <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--indigo-100);">• ${escapeHtml(r.text)}</li>
+              `).join('')}
             </ul>
+          </div>
           ` : ''}
         </section>
 
@@ -612,39 +762,51 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Company Overview</h2>
           </div>
 
-          ${companyContext?.description ? `
-            <p style="margin-bottom: 1.5rem; font-size: 1rem;">${escapeHtml(companyContext.description)}</p>
-          ` : ''}
-
-          <div class="info-grid">
-            ${companyContext?.industry ? `
-              <div class="info-item">
-                <div class="info-label">Industry</div>
-                <div class="info-value">${escapeHtml(companyContext.industry)}</div>
-              </div>
-            ` : ''}
-            ${companyContext?.companySize ? `
-              <div class="info-item">
-                <div class="info-label">Company Size</div>
-                <div class="info-value">${escapeHtml(companyContext.companySize)}</div>
-              </div>
-            ` : ''}
-            <div class="info-item">
-              <div class="info-label">Interviews Analyzed</div>
-              <div class="info-value">${data.totalInterviews || 0} interviews</div>
+          <!-- Project Metadata -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value">${data.totalInterviews || 0}</div>
+              <div class="metric-label">Interviews Analyzed</div>
             </div>
-            <div class="info-item">
-              <div class="info-label">Audit Date</div>
-              <div class="info-value">${auditDate}</div>
+            <div class="metric-card">
+              <div class="metric-value">${auditDate}</div>
+              <div class="metric-label">Date Range</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">${generatedDate}</div>
+              <div class="metric-label">Summary Generated</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">${Object.keys(data.roleDistribution || {}).length}</div>
+              <div class="metric-label">Unique Roles</div>
             </div>
           </div>
 
-          ${companyContext?.projectGoals ? `
-            <div class="info-item" style="margin-top: 1rem;">
-              <div class="info-label">Project Goals</div>
-              <div class="info-value">${escapeHtml(companyContext.projectGoals)}</div>
+          <!-- Company Context -->
+          <div class="subsection">
+            <div class="subsection-title">Company Context</div>
+            ${companyContext?.description ? `<p style="margin-bottom: 1rem; font-size: 0.9rem;">${escapeHtml(companyContext.description)}</p>` : ''}
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+              ${companyContext?.industry ? `
+                <div>
+                  <div style="font-size: 0.75rem; color: var(--slate-500); text-transform: uppercase; margin-bottom: 0.25rem;">Industry</div>
+                  <div style="font-size: 0.9rem; color: var(--slate-800);">${escapeHtml(companyContext.industry)}</div>
+                </div>
+              ` : ''}
+              ${companyContext?.companySize ? `
+                <div>
+                  <div style="font-size: 0.75rem; color: var(--slate-500); text-transform: uppercase; margin-bottom: 0.25rem;">Company Size</div>
+                  <div style="font-size: 0.9rem; color: var(--slate-800);">${escapeHtml(companyContext.companySize)}</div>
+                </div>
+              ` : ''}
             </div>
-          ` : ''}
+            ${companyContext?.projectGoals ? `
+              <div style="margin-top: 1rem;">
+                <div style="font-size: 0.75rem; color: var(--slate-500); text-transform: uppercase; margin-bottom: 0.25rem;">Project Goals</div>
+                <div style="font-size: 0.9rem; color: var(--slate-800);">${escapeHtml(companyContext.projectGoals)}</div>
+              </div>
+            ` : ''}
+          </div>
         </section>
 
         <!-- Role & Responsibility -->
@@ -654,20 +816,49 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Role & Responsibility</h2>
           </div>
 
-          ${Object.keys(data.roleDistribution || {}).length ? `
-            <p style="margin-bottom: 1rem; color: var(--slate-600);">${Object.keys(data.roleDistribution || {}).length} unique roles identified across ${data.totalInterviews || 0} interviews.</p>
-            <div class="roles-grid">
+          <p style="margin-bottom: 1rem; color: var(--slate-600); font-size: 0.9rem;">
+            ${Object.keys(data.roleDistribution || {}).length} unique roles identified across ${data.totalInterviews || 0} interviews.
+          </p>
+
+          ${roleProfiles.length ? `
+            <div class="cards-grid">
+              ${roleProfiles.map(role => `
+                <div class="profile-card">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box purple">${icons.users}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(role.title)}</div>
+                      <div class="profile-card-meta">${role.count} interview${role.count !== 1 ? 's' : ''}</div>
+                    </div>
+                  </div>
+                  <div class="profile-card-content">
+                    ${role.responsibilities?.length ? `
+                      <p><strong>Responsibilities:</strong> ${role.responsibilities.slice(0, 2).map(escapeHtml).join(', ')}${role.responsibilities.length > 2 ? ` +${role.responsibilities.length - 2} more` : ''}</p>
+                    ` : ''}
+                    <div class="tags-row">
+                      ${role.workflows?.slice(0, 3).map(w => `<span class="tag" style="background: var(--indigo-100); color: var(--indigo-600);">${escapeHtml(w)}</span>`).join('')}
+                      ${role.tools?.slice(0, 2).map(t => `<span class="tag" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(t)}</span>`).join('')}
+                    </div>
+                  </div>
+                  ${(role.issuesDetected?.length || role.trainingNeeds?.length) ? `
+                    <div class="profile-card-footer">
+                      ${role.issuesDetected?.length ? `<span class="badge badge-red">${role.issuesDetected.length} issues</span>` : ''}
+                      ${role.trainingNeeds?.length ? `<span class="badge badge-amber">${role.trainingNeeds.length} training needs</span>` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="tags-row" style="gap: 0.75rem;">
               ${Object.entries(data.roleDistribution || {})
-                .sort(([, a], [, b]) => (b as number) - (a as number))
+                .sort(([,a], [,b]) => (b as number) - (a as number))
                 .map(([role, count]) => `
-                  <span class="role-tag">
-                    ${escapeHtml(role)}
-                    <span class="role-count">${count}</span>
+                  <span class="badge badge-purple" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+                    ${escapeHtml(role)} <span style="background: white; padding: 0.1rem 0.4rem; border-radius: 9999px; margin-left: 0.5rem;">${count}</span>
                   </span>
                 `).join('')}
             </div>
-          ` : `
-            <p style="color: var(--slate-500);">No roles identified yet.</p>
           `}
         </section>
 
@@ -678,61 +869,104 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Workflow & Process</h2>
           </div>
 
-          ${data.topWorkflows?.length ? `
-            <p style="margin-bottom: 1rem; color: var(--slate-600);">${data.topWorkflows.length} workflows identified.</p>
-            <div class="card-grid">
-              ${data.topWorkflows.slice(0, 12).map((wf: { name: string; frequency?: number | string; mentions?: number; participants?: string[] }) => `
-                <div class="card">
-                  <h3>${escapeHtml(wf.name)}</h3>
-                  <div style="margin-top: 0.5rem;">
-                    ${wf.mentions ? `<span class="badge badge-blue">${wf.mentions} mentions</span>` : ''}
-                    ${wf.frequency ? `<span class="badge badge-purple">${typeof wf.frequency === 'number' ? wf.frequency + 'x' : wf.frequency}</span>` : ''}
+          <p style="margin-bottom: 1rem; color: var(--slate-600); font-size: 0.9rem;">
+            ${workflowProfiles.length || data.topWorkflows?.length || 0} workflows identified.
+          </p>
+
+          ${workflowProfiles.length ? `
+            <div class="cards-grid">
+              ${workflowProfiles.map(wf => `
+                <div class="profile-card">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box blue">${icons.workflow}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(wf.name)}</div>
+                      <div class="profile-card-meta">
+                        ${wf.count} mention${wf.count !== 1 ? 's' : ''}
+                        ${wf.frequency ? ` • ${wf.frequency}` : ''}
+                      </div>
+                    </div>
                   </div>
-                  ${wf.participants?.length ? `<p style="margin-top: 0.5rem; font-size: 0.85rem;">Participants: ${wf.participants.slice(0, 3).join(', ')}${wf.participants.length > 3 ? ` +${wf.participants.length - 3} more` : ''}</p>` : ''}
+                  <div class="profile-card-content">
+                    ${wf.steps?.length ? `<p><strong>Steps:</strong> ${wf.steps.length}</p>` : ''}
+                    <div class="tags-row">
+                      ${wf.participants?.slice(0, 3).map(p => `<span class="tag">${escapeHtml(p)}</span>`).join('')}
+                      ${wf.participants?.length && wf.participants.length > 3 ? `<span class="tag">+${wf.participants.length - 3} more</span>` : ''}
+                    </div>
+                    ${wf.systems?.length ? `
+                      <div class="tags-row" style="margin-top: 0.375rem;">
+                        ${wf.systems.slice(0, 3).map(s => `<span class="tag" style="background: var(--cyan-100); color: var(--cyan-600);">${escapeHtml(s)}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                  ${(wf.failurePoints?.length || wf.unclearSteps?.length) ? `
+                    <div class="profile-card-footer">
+                      ${wf.failurePoints?.length ? `<span class="badge badge-red">${wf.failurePoints.length} failure points</span>` : ''}
+                      ${wf.unclearSteps?.length ? `<span class="badge badge-amber">${wf.unclearSteps.length} unclear steps</span>` : ''}
+                    </div>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
-          ` : `
-            <p style="color: var(--slate-500);">No workflows identified yet.</p>
-          `}
+          ` : data.topWorkflows?.length ? `
+            <div class="cards-grid">
+              ${data.topWorkflows.slice(0, 12).map((wf: any) => `
+                <div class="profile-card">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box blue">${icons.workflow}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(wf.name)}</div>
+                      <div class="profile-card-meta">${wf.mentions || 0} mentions</div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p style="color: var(--slate-500);">No workflows identified yet.</p>'}
         </section>
 
         <!-- Risk & Bottlenecks -->
         <section id="risks" class="section">
           <div class="section-header">
             <span class="section-icon">${icons.alertTriangle}</span>
-            <h2 class="section-title">Risk & Bottlenecks</h2>
+            <h2 class="section-title">Risk, Friction, & Bottlenecks</h2>
           </div>
 
+          <!-- Pain Points -->
           ${data.criticalPainPoints?.length ? `
-            <h3 style="font-size: 1.125rem; margin-bottom: 1rem; color: var(--slate-800);">Pain Points (${data.criticalPainPoints.length})</h3>
-            <div class="card-grid">
-              ${data.criticalPainPoints.slice(0, 10).map((pp: { description: string; severity?: string; affectedCount?: number }) => `
-                <div class="card severity-${pp.severity || 'medium'}">
-                  <div style="margin-bottom: 0.5rem;">
-                    <span class="badge badge-${pp.severity === 'critical' || pp.severity === 'high' ? 'red' : 'amber'}">${(pp.severity || 'medium').toUpperCase()}</span>
+            <div class="subsection">
+              <div class="subsection-title">${icons.alertTriangle} Critical Pain Points (${data.criticalPainPoints.length})</div>
+              ${data.criticalPainPoints.slice(0, 10).map((pp: any) => `
+                <div class="pain-point-card ${pp.severity || 'medium'}">
+                  <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <span class="badge badge-${pp.severity === 'critical' ? 'red' : pp.severity === 'high' ? 'orange' : 'amber'}">${(pp.severity || 'MEDIUM').toUpperCase()}</span>
                     ${pp.affectedCount ? `<span class="badge badge-blue">${pp.affectedCount} affected</span>` : ''}
                   </div>
-                  <p>${escapeHtml(pp.description)}</p>
+                  <p style="font-size: 0.9rem; color: var(--slate-700);">${escapeHtml(pp.description)}</p>
                 </div>
               `).join('')}
             </div>
-          ` : `
-            <p style="color: var(--slate-500); margin-bottom: 1.5rem;">No pain points identified yet.</p>
-          `}
-
-          ${data.highRiskHandoffs?.length ? `
-            <h3 style="font-size: 1.125rem; margin: 2rem 0 1rem; color: var(--slate-800);">High-Risk Handoffs (${data.highRiskHandoffs.length})</h3>
-            <ul class="list">
-              ${data.highRiskHandoffs.slice(0, 8).map((h: { fromRole: string; toRole: string; process: string; occurrences?: number }) => `
-                <li>
-                  <strong>${escapeHtml(h.fromRole)}</strong> → <strong>${escapeHtml(h.toRole)}</strong>
-                  <br><span style="color: var(--slate-600); font-size: 0.9rem;">${escapeHtml(h.process)}</span>
-                  ${h.occurrences ? `<span class="badge badge-amber" style="margin-left: 0.5rem;">${h.occurrences} occurrences</span>` : ''}
-                </li>
-              `).join('')}
-            </ul>
           ` : ''}
+
+          <!-- High-Risk Handoffs -->
+          ${data.highRiskHandoffs?.length ? `
+            <div class="subsection">
+              <div class="subsection-title" style="color: var(--orange-600);">${icons.arrowRight} High-Risk Handoffs (${data.highRiskHandoffs.length})</div>
+              ${data.highRiskHandoffs.slice(0, 8).map((h: any) => `
+                <div class="handoff-card">
+                  <div class="handoff-flow">
+                    <span>${escapeHtml(h.fromRole)}</span>
+                    ${icons.arrowRight}
+                    <span>${escapeHtml(h.toRole)}</span>
+                    ${h.occurrences ? `<span class="badge badge-orange" style="margin-left: auto;">${h.occurrences} occurrences</span>` : ''}
+                  </div>
+                  <div class="handoff-process">${escapeHtml(h.process)}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${!data.criticalPainPoints?.length && !data.highRiskHandoffs?.length ? '<p style="color: var(--slate-500);">No risks or issues identified yet.</p>' : ''}
         </section>
 
         <!-- Technology & Systems -->
@@ -742,61 +976,145 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Technology & Systems</h2>
           </div>
 
-          ${data.commonTools?.length ? `
-            <p style="margin-bottom: 1rem; color: var(--slate-600);">${data.commonTools.length} tools and systems identified.</p>
-            <div class="card-grid">
-              ${data.commonTools.slice(0, 12).map((tool: { name: string; userCount?: number; roles?: string[]; purpose?: string }) => `
-                <div class="card">
-                  <h3>${escapeHtml(tool.name)}</h3>
-                  ${tool.userCount ? `<span class="badge badge-green">${tool.userCount} users</span>` : ''}
-                  ${tool.purpose ? `<p style="margin-top: 0.5rem; font-size: 0.85rem;">${escapeHtml(tool.purpose)}</p>` : ''}
-                  ${tool.roles?.length ? `<p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--slate-500);">Used by: ${tool.roles.slice(0, 3).map(escapeHtml).join(', ')}${tool.roles.length > 3 ? ` +${tool.roles.length - 3} more` : ''}</p>` : ''}
+          <p style="margin-bottom: 1rem; color: var(--slate-600); font-size: 0.9rem;">
+            ${toolProfiles.length || data.commonTools?.length || 0} tools and systems identified.
+          </p>
+
+          ${toolProfiles.length ? `
+            <div class="cards-grid">
+              ${toolProfiles.map(tool => `
+                <div class="profile-card" style="${tool.gaps?.some(g => g.severity === 'high') ? 'border-left: 3px solid var(--red-500);' : ''}">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box ${getCategoryColor(tool.category)}">${icons.wrench}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(tool.name)}</div>
+                      <div class="profile-card-meta">
+                        <span class="badge badge-sm badge-slate">${tool.category || 'other'}</span>
+                        ${tool.count} mention${tool.count !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="profile-card-content">
+                    ${tool.intendedPurpose ? `<p style="font-size: 0.85rem;"><strong>Purpose:</strong> ${escapeHtml(tool.intendedPurpose)}</p>` : ''}
+                    ${tool.usedBy?.length ? `
+                      <p style="font-size: 0.8rem; color: var(--slate-500); margin-top: 0.5rem;">
+                        Used by: ${tool.usedBy.slice(0, 3).map(u => u.role).join(', ')}${tool.usedBy.length > 3 ? ` +${tool.usedBy.length - 3} more` : ''}
+                      </p>
+                    ` : ''}
+                    ${tool.workflows?.length ? `
+                      <div class="tags-row">
+                        ${tool.workflows.slice(0, 2).map(w => `<span class="tag" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(w.name)}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                  ${tool.gaps?.length ? `
+                    <div class="profile-card-footer">
+                      <span class="badge badge-${tool.gaps.some(g => g.severity === 'high') ? 'red' : 'amber'}">${tool.gaps.length} gap${tool.gaps.length !== 1 ? 's' : ''}</span>
+                    </div>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
-          ` : `
-            <p style="color: var(--slate-500);">No tools identified yet.</p>
-          `}
+          ` : data.commonTools?.length ? `
+            <div class="cards-grid">
+              ${data.commonTools.slice(0, 12).map((tool: any) => `
+                <div class="profile-card">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box cyan">${icons.wrench}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(tool.name)}</div>
+                      <div class="profile-card-meta">${tool.userCount || 0} users</div>
+                    </div>
+                  </div>
+                  ${tool.roles?.length ? `
+                    <div class="profile-card-content">
+                      <div class="tags-row">
+                        ${tool.roles.slice(0, 3).map((r: string) => `<span class="tag">${escapeHtml(r)}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p style="color: var(--slate-500);">No tools identified yet.</p>'}
         </section>
 
         <!-- Training Gaps -->
         <section id="training" class="section">
           <div class="section-header">
             <span class="section-icon">${icons.graduationCap}</span>
-            <h2 class="section-title">Training Gaps</h2>
+            <h2 class="section-title">Training & Capability Gaps</h2>
           </div>
 
-          ${data.priorityTrainingGaps?.length ? `
-            <p style="margin-bottom: 1rem; color: var(--slate-600);">${data.priorityTrainingGaps.length} training gaps identified.</p>
-            <div class="card-grid">
-              ${data.priorityTrainingGaps.slice(0, 10).map((gap: { area: string; priority?: string; affectedRoles?: string[]; count?: number }) => `
-                <div class="card severity-${gap.priority || 'medium'}">
-                  <h3>${escapeHtml(gap.area)}</h3>
-                  <div style="margin-top: 0.5rem;">
-                    <span class="badge badge-${gap.priority === 'high' ? 'red' : gap.priority === 'medium' ? 'amber' : 'blue'}">${(gap.priority || 'medium').toUpperCase()}</span>
-                    ${gap.count ? `<span class="badge badge-purple">${gap.count} mentions</span>` : ''}
+          <p style="margin-bottom: 1rem; color: var(--slate-600); font-size: 0.9rem;">
+            ${trainingGapProfiles.length || data.priorityTrainingGaps?.length || 0} training gaps identified.
+          </p>
+
+          ${trainingGapProfiles.length ? `
+            <div class="cards-grid">
+              ${trainingGapProfiles.map(gap => `
+                <div class="profile-card" style="${gap.risk?.severity === 'critical' || gap.risk?.severity === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box ${gap.category === 'system' ? 'cyan' : gap.category === 'process' ? 'blue' : gap.category === 'skill' ? 'purple' : 'amber'}">${icons.graduationCap}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(gap.area)}</div>
+                      <div class="profile-card-meta">
+                        <span class="badge badge-sm badge-${gap.priority === 'high' ? 'red' : gap.priority === 'medium' ? 'amber' : 'slate'}">${gap.priority?.toUpperCase() || 'MEDIUM'}</span>
+                        ${gap.count} mention${gap.count !== 1 ? 's' : ''}
+                      </div>
+                    </div>
                   </div>
-                  ${gap.affectedRoles?.length ? `<p style="margin-top: 0.5rem; font-size: 0.85rem;">Affects: ${gap.affectedRoles.slice(0, 3).join(', ')}${gap.affectedRoles.length > 3 ? ` +${gap.affectedRoles.length - 3} more` : ''}</p>` : ''}
+                  <div class="profile-card-content">
+                    ${gap.currentState ? `<p style="font-size: 0.85rem;"><strong>Current:</strong> ${escapeHtml(gap.currentState)}</p>` : ''}
+                    ${gap.desiredState ? `<p style="font-size: 0.85rem;"><strong>Target:</strong> ${escapeHtml(gap.desiredState)}</p>` : ''}
+                    ${gap.affectedRoles?.length ? `
+                      <div class="tags-row">
+                        ${gap.affectedRoles.slice(0, 3).map(r => `<span class="tag">${escapeHtml(typeof r === 'string' ? r : r.role)}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                  ${gap.risk ? `
+                    <div class="profile-card-footer">
+                      <span class="badge badge-${gap.risk.severity === 'critical' ? 'red' : gap.risk.severity === 'high' ? 'orange' : 'amber'}">${gap.risk.severity?.toUpperCase()} RISK</span>
+                    </div>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
-          ` : `
-            <p style="color: var(--slate-500);">No training gaps identified yet.</p>
-          `}
+          ` : data.priorityTrainingGaps?.length ? `
+            <div class="cards-grid">
+              ${data.priorityTrainingGaps.slice(0, 10).map((gap: any) => `
+                <div class="profile-card">
+                  <div class="profile-card-header">
+                    <div class="profile-icon-box amber">${icons.graduationCap}</div>
+                    <div>
+                      <div class="profile-card-title">${escapeHtml(gap.area)}</div>
+                      <div class="profile-card-meta">
+                        <span class="badge badge-sm badge-${gap.priority === 'high' ? 'red' : 'amber'}">${(gap.priority || 'MEDIUM').toUpperCase()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  ${gap.affectedRoles?.length ? `
+                    <div class="profile-card-content">
+                      <div class="tags-row">
+                        ${gap.affectedRoles.slice(0, 3).map((r: string) => `<span class="tag">${escapeHtml(r)}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p style="color: var(--slate-500);">No training gaps identified yet.</p>'}
         </section>
 
         <!-- Recommendations -->
         <section id="recommendations" class="section">
           <div class="section-header">
             <span class="section-icon">${icons.lightbulb}</span>
-            <h2 class="section-title">Recommendations</h2>
+            <h2 class="section-title">Recommendations & Roadmap</h2>
           </div>
 
-          ${data.recommendations?.length ? `
-            ${renderRecommendationsByPriority(data.recommendations)}
-          ` : `
-            <p style="color: var(--slate-500);">No recommendations added yet.</p>
-          `}
+          ${recommendationProfiles.length ? renderRecommendationProfiles(recommendationProfiles) : renderRecommendationsByPriority(data.recommendations || [])}
         </section>
 
         <!-- Supporting Evidence -->
@@ -806,24 +1124,58 @@ export function generateHTMLExport(summary: CompanySummary): string {
             <h2 class="section-title">Supporting Evidence</h2>
           </div>
 
-          <p style="margin-bottom: 1rem; color: var(--slate-600);">This summary is based on ${data.totalInterviews || 0} interview${(data.totalInterviews || 0) !== 1 ? 's' : ''} conducted as part of the process audit.</p>
+          <div class="info-banner">
+            <div class="info-banner-icon">${icons.info}</div>
+            <div class="info-banner-content">
+              <h4>Transparency Layer</h4>
+              <p>This summary is based on ${data.totalInterviews || 0} interview${(data.totalInterviews || 0) !== 1 ? 's' : ''} conducted as part of the process audit. All findings and recommendations can be traced back to specific interview sources.</p>
+            </div>
+          </div>
 
-          ${summary.interview_ids?.length ? `
-            <p style="font-size: 0.875rem; color: var(--slate-500);">${summary.interview_ids.length} source interview${summary.interview_ids.length !== 1 ? 's' : ''} included in this analysis.</p>
-          ` : ''}
+          <div class="evidence-stats">
+            <div class="evidence-stat">
+              <div class="evidence-stat-icon" style="background: var(--purple-100); color: var(--purple-600);">${icons.users}</div>
+              <div>
+                <div class="evidence-stat-value">${Object.keys(data.roleDistribution || {}).length}</div>
+                <div class="evidence-stat-label">Unique Roles</div>
+              </div>
+            </div>
+            <div class="evidence-stat">
+              <div class="evidence-stat-icon" style="background: var(--blue-100); color: var(--blue-600);">${icons.workflow}</div>
+              <div>
+                <div class="evidence-stat-value">${data.topWorkflows?.length || 0}</div>
+                <div class="evidence-stat-label">Workflows</div>
+              </div>
+            </div>
+            <div class="evidence-stat">
+              <div class="evidence-stat-icon" style="background: var(--cyan-100); color: var(--cyan-600);">${icons.wrench}</div>
+              <div>
+                <div class="evidence-stat-value">${data.commonTools?.length || 0}</div>
+                <div class="evidence-stat-label">Tools Identified</div>
+              </div>
+            </div>
+            <div class="evidence-stat">
+              <div class="evidence-stat-icon" style="background: var(--red-100); color: var(--red-600);">${icons.alertTriangle}</div>
+              <div>
+                <div class="evidence-stat-value">${data.criticalPainPoints?.length || 0}</div>
+                <div class="evidence-stat-label">Issues Found</div>
+              </div>
+            </div>
+          </div>
 
-          <div style="margin-top: 1rem; padding: 1rem; background: var(--slate-50); border-radius: 0.5rem;">
-            <p style="font-size: 0.875rem; color: var(--slate-600);">
+          <div class="subsection">
+            <p style="font-size: 0.9rem; color: var(--slate-600);">
               <strong>Generated:</strong> ${generatedDate}<br>
-              <strong>Audit Period:</strong> ${auditDate}
+              <strong>Audit Period:</strong> ${auditDate}<br>
+              <strong>Source Interviews:</strong> ${summary.interview_ids?.length || data.totalInterviews || 0}
             </p>
           </div>
         </section>
 
         <!-- Footer -->
         <footer class="footer">
-          <p>Generated by ConsultantAI • ${generatedDate}</p>
-          <p style="margin-top: 0.5rem; opacity: 0.7;">Powered by Claude AI</p>
+          <p><strong>Generated by ConsultantAI</strong></p>
+          <p style="margin-top: 0.5rem; opacity: 0.7;">${generatedDate} • Powered by Claude AI</p>
         </footer>
 
       </div>
@@ -874,7 +1226,7 @@ export function generateHTMLExport(summary: CompanySummary): string {
   return html;
 }
 
-// Helper to escape HTML special characters
+// Helper functions
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
     '&': '&amp;',
@@ -886,7 +1238,127 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => map[char]);
 }
 
-// Helper to render recommendations grouped by priority
+function getMaturityLabel(level: number): string {
+  const labels = ['', 'Initial', 'Developing', 'Defined', 'Managed', 'Optimizing'];
+  return labels[level] || '';
+}
+
+function getMaturityColor(level: number): string {
+  const colors = ['', 'var(--red-500)', 'var(--orange-500)', 'var(--amber-500)', 'var(--blue-500)', 'var(--green-500)'];
+  return colors[level] || 'var(--slate-400)';
+}
+
+function getCategoryColor(category?: string): string {
+  const colors: Record<string, string> = {
+    crm: 'blue',
+    pm: 'purple',
+    spreadsheet: 'green',
+    communication: 'amber',
+    erp: 'indigo',
+    custom: 'cyan',
+    other: 'slate'
+  };
+  return colors[category || 'other'] || 'slate';
+}
+
+function renderRecommendationProfiles(profiles: RecommendationProfile[]): string {
+  const immediate = profiles.filter(r => r.phase === 'immediate');
+  const shortTerm = profiles.filter(r => r.phase === 'short-term');
+  const longTerm = profiles.filter(r => r.phase === 'long-term');
+
+  let html = '';
+
+  if (immediate.length) {
+    html += `
+      <div class="phase-section">
+        <div class="phase-header phase-immediate">
+          ${icons.zap}
+          <span class="phase-title">Immediate (0-30 days)</span>
+          <span class="phase-count">${immediate.length} recommendations</span>
+        </div>
+        <div class="cards-grid">
+          ${immediate.map(r => renderRecommendationCard(r)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (shortTerm.length) {
+    html += `
+      <div class="phase-section">
+        <div class="phase-header phase-short">
+          ${icons.clock}
+          <span class="phase-title">Short-term (30-90 days)</span>
+          <span class="phase-count">${shortTerm.length} recommendations</span>
+        </div>
+        <div class="cards-grid">
+          ${shortTerm.map(r => renderRecommendationCard(r)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (longTerm.length) {
+    html += `
+      <div class="phase-section">
+        <div class="phase-header phase-long">
+          ${icons.calendar}
+          <span class="phase-title">Long-term (90+ days)</span>
+          <span class="phase-count">${longTerm.length} recommendations</span>
+        </div>
+        <div class="cards-grid">
+          ${longTerm.map(r => renderRecommendationCard(r)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (!html) {
+    html = '<p style="color: var(--slate-500);">No recommendations added yet.</p>';
+  }
+
+  return html;
+}
+
+function renderRecommendationCard(rec: RecommendationProfile): string {
+  const categoryColors: Record<string, string> = {
+    process: 'blue',
+    training: 'amber',
+    technology: 'cyan',
+    organization: 'purple',
+    'risk-mitigation': 'red'
+  };
+
+  return `
+    <div class="profile-card" style="${rec.priority === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+      <div class="profile-card-header">
+        <div class="profile-icon-box ${categoryColors[rec.category] || 'indigo'}">${icons.lightbulb}</div>
+        <div>
+          <div class="profile-card-title">${escapeHtml(rec.title)}</div>
+          <div class="profile-card-meta">
+            <span class="badge badge-sm badge-${categoryColors[rec.category] || 'slate'}">${rec.category}</span>
+            <span class="badge badge-sm badge-${rec.levelOfEffort === 'high' ? 'red' : rec.levelOfEffort === 'medium' ? 'amber' : 'green'}">${rec.levelOfEffort} effort</span>
+          </div>
+        </div>
+      </div>
+      <div class="profile-card-content">
+        ${rec.problemAddressed ? `<p style="font-size: 0.85rem;"><strong>Problem:</strong> ${escapeHtml(rec.problemAddressed)}</p>` : ''}
+        ${rec.expectedImpact ? `<p style="font-size: 0.85rem;"><strong>Impact:</strong> ${escapeHtml(rec.expectedImpact)}</p>` : ''}
+        ${rec.relatedItems?.roles?.length ? `
+          <div class="tags-row">
+            ${rec.relatedItems.roles.slice(0, 3).map(r => `<span class="tag">${escapeHtml(r)}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+      <div class="profile-card-footer">
+        <span class="badge badge-${rec.priority === 'high' ? 'red' : rec.priority === 'medium' ? 'amber' : 'green'}">${rec.priority} priority</span>
+        ${rec.source === 'auto' ? '<span class="badge badge-slate">auto-generated</span>' : ''}
+        ${rec.dependencies?.length ? `<span class="badge badge-slate">${rec.dependencies.length} dependencies</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function renderRecommendationsByPriority(recommendations: Array<{ id?: string; text: string; priority?: string }>): string {
   const high = recommendations.filter(r => r.priority === 'high');
   const medium = recommendations.filter(r => r.priority === 'medium');
@@ -896,13 +1368,14 @@ function renderRecommendationsByPriority(recommendations: Array<{ id?: string; t
 
   if (high.length) {
     html += `
-      <div class="recommendation-phase">
-        <div class="phase-header">
-          <span class="phase-badge phase-immediate">Immediate (0-30 days)</span>
-          <span style="color: var(--slate-500); font-size: 0.875rem;">${high.length} recommendations</span>
+      <div class="phase-section">
+        <div class="phase-header phase-immediate">
+          ${icons.zap}
+          <span class="phase-title">Immediate (0-30 days)</span>
+          <span class="phase-count">${high.length} recommendations</span>
         </div>
-        <ul class="list">
-          ${high.map(r => `<li>${escapeHtml(r.text)}</li>`).join('')}
+        <ul style="list-style: none;">
+          ${high.map(r => `<li style="padding: 0.75rem; background: var(--slate-50); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">• ${escapeHtml(r.text)}</li>`).join('')}
         </ul>
       </div>
     `;
@@ -910,13 +1383,14 @@ function renderRecommendationsByPriority(recommendations: Array<{ id?: string; t
 
   if (medium.length) {
     html += `
-      <div class="recommendation-phase">
-        <div class="phase-header">
-          <span class="phase-badge phase-short-term">Short-term (30-90 days)</span>
-          <span style="color: var(--slate-500); font-size: 0.875rem;">${medium.length} recommendations</span>
+      <div class="phase-section">
+        <div class="phase-header phase-short">
+          ${icons.clock}
+          <span class="phase-title">Short-term (30-90 days)</span>
+          <span class="phase-count">${medium.length} recommendations</span>
         </div>
-        <ul class="list">
-          ${medium.map(r => `<li>${escapeHtml(r.text)}</li>`).join('')}
+        <ul style="list-style: none;">
+          ${medium.map(r => `<li style="padding: 0.75rem; background: var(--slate-50); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">• ${escapeHtml(r.text)}</li>`).join('')}
         </ul>
       </div>
     `;
@@ -924,16 +1398,21 @@ function renderRecommendationsByPriority(recommendations: Array<{ id?: string; t
 
   if (low.length) {
     html += `
-      <div class="recommendation-phase">
-        <div class="phase-header">
-          <span class="phase-badge phase-long-term">Long-term (90+ days)</span>
-          <span style="color: var(--slate-500); font-size: 0.875rem;">${low.length} recommendations</span>
+      <div class="phase-section">
+        <div class="phase-header phase-long">
+          ${icons.calendar}
+          <span class="phase-title">Long-term (90+ days)</span>
+          <span class="phase-count">${low.length} recommendations</span>
         </div>
-        <ul class="list">
-          ${low.map(r => `<li>${escapeHtml(r.text)}</li>`).join('')}
+        <ul style="list-style: none;">
+          ${low.map(r => `<li style="padding: 0.75rem; background: var(--slate-50); border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">• ${escapeHtml(r.text)}</li>`).join('')}
         </ul>
       </div>
     `;
+  }
+
+  if (!html) {
+    html = '<p style="color: var(--slate-500);">No recommendations added yet.</p>';
   }
 
   return html;

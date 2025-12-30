@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { Download, FileJson, FileText, Globe, Loader2, FileCheck } from 'lucide-react';
-import { CompanySummary } from '../../../types/database';
+import { CompanySummary, Interview } from '../../../types/database';
+import { RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../../../types/analysis';
 import { generateCompanySummaryPDF, generateExecutiveSummaryPDF, downloadPDF } from '../../../services/pdfService';
 import { generateHTMLExport, downloadHTML } from '../../../services/htmlExportService';
 
 interface ExportsSectionProps {
   summary: CompanySummary;
+  interviews?: Interview[];
+  roleProfiles?: RoleProfile[];
+  workflowProfiles?: WorkflowProfile[];
+  toolProfiles?: ToolProfile[];
+  trainingGapProfiles?: TrainingGapProfile[];
+  recommendationProfiles?: RecommendationProfile[];
 }
 
 // Utility function for generating date-stamped filenames
@@ -27,7 +34,15 @@ function generateExportFilename(
   return `${sanitizedTitle}_${typeLabels[exportType]}_${date}.${extension}`;
 }
 
-export function ExportsSection({ summary }: ExportsSectionProps) {
+export function ExportsSection({
+  summary,
+  interviews,
+  roleProfiles,
+  workflowProfiles,
+  toolProfiles,
+  trainingGapProfiles,
+  recommendationProfiles,
+}: ExportsSectionProps) {
   const [isExportingFullPDF, setIsExportingFullPDF] = useState(false);
   const [isExportingExecPDF, setIsExportingExecPDF] = useState(false);
   const [isExportingHTML, setIsExportingHTML] = useState(false);
@@ -66,7 +81,14 @@ export function ExportsSection({ summary }: ExportsSectionProps) {
   const handleExportHTML = async () => {
     setIsExportingHTML(true);
     try {
-      const html = generateHTMLExport(summary);
+      const html = generateHTMLExport(summary, {
+        interviews,
+        roleProfiles,
+        workflowProfiles,
+        toolProfiles,
+        trainingGapProfiles,
+        recommendationProfiles,
+      });
       const filename = generateExportFilename(summary.title, 'html', 'html');
       downloadHTML(html, filename);
       setLastExported(filename);
