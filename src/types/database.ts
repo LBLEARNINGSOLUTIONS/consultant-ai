@@ -74,6 +74,11 @@ export interface Database {
           analyzed_at: string | null;
           created_at: string;
           updated_at: string;
+          // Interview metadata
+          interview_date: string | null;
+          interviewee_name: string | null;
+          interviewee_role: string | null;
+          department: string | null;
         };
         Insert: {
           user_id: string;
@@ -90,6 +95,11 @@ export interface Database {
           raw_analysis_response?: Json;
           error_message?: string;
           analyzed_at?: string;
+          // Interview metadata (optional)
+          interview_date?: string | null;
+          interviewee_name?: string | null;
+          interviewee_role?: string | null;
+          department?: string | null;
         };
         Update: {
           company_id?: string | null;
@@ -105,6 +115,11 @@ export interface Database {
           raw_analysis_response?: Json;
           error_message?: string;
           analyzed_at?: string;
+          // Interview metadata (optional)
+          interview_date?: string | null;
+          interviewee_name?: string | null;
+          interviewee_role?: string | null;
+          department?: string | null;
         };
       };
       company_summaries: {

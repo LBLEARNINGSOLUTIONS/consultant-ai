@@ -9,6 +9,11 @@ export interface UploadResult {
   filename: string;
   text: string;
   error?: string;
+  // Interview metadata (optional)
+  interviewDate?: string;
+  intervieweeName?: string;
+  intervieweeRole?: string;
+  department?: string;
 }
 
 const MAX_FILE_SIZE = parseInt(import.meta.env.VITE_MAX_FILE_SIZE_MB || '10') * 1024 * 1024; // Default 10MB

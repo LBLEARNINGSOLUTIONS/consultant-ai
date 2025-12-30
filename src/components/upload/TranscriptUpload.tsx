@@ -16,9 +16,15 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
   const [pastedText, setPastedText] = useState('');
   const [transcriptTitle, setTranscriptTitle] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState<Map<string, number>>(new Map());
+  const [_progress, setProgress] = useState<Map<string, number>>(new Map());
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Interview metadata state
+  const [interviewDate, setInterviewDate] = useState('');
+  const [intervieweeName, setIntervieweeName] = useState('');
+  const [intervieweeRole, setIntervieweeRole] = useState('');
+  const [department, setDepartment] = useState('');
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -55,6 +61,13 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const resetMetadataFields = () => {
+    setInterviewDate('');
+    setIntervieweeName('');
+    setIntervieweeRole('');
+    setDepartment('');
+  };
+
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -69,9 +82,19 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
         }
       );
 
-      onUploadComplete(results);
+      // Add metadata to all results (applies same metadata to all files in batch)
+      const resultsWithMetadata = results.map(result => ({
+        ...result,
+        interviewDate: interviewDate || undefined,
+        intervieweeName: intervieweeName || undefined,
+        intervieweeRole: intervieweeRole || undefined,
+        department: department || undefined,
+      }));
+
+      onUploadComplete(resultsWithMetadata);
       setSelectedFiles([]);
       setProgress(new Map());
+      resetMetadataFields();
     } catch (error) {
       console.error('Upload error:', error);
     } finally {
@@ -90,16 +113,21 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
     setUploading(true);
 
     try {
-      // Create a result object for pasted text
+      // Create a result object for pasted text with metadata
       const result: UploadResult = {
         fileId: `paste-${Date.now()}`,
         filename: title,
         text: pastedText,
+        interviewDate: interviewDate || undefined,
+        intervieweeName: intervieweeName || undefined,
+        intervieweeRole: intervieweeRole || undefined,
+        department: department || undefined,
       };
 
       onUploadComplete([result]);
       setPastedText('');
       setTranscriptTitle('');
+      resetMetadataFields();
     } catch (error) {
       console.error('Paste upload error:', error);
       alert('Failed to process pasted transcript.');
@@ -209,6 +237,68 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
               />
             </div>
 
+            {/* Interview Metadata Section */}
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Interview Details (Optional)</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="interview-date" className="block text-xs text-slate-500 mb-1">
+                    Interview Date
+                  </label>
+                  <input
+                    id="interview-date"
+                    type="date"
+                    value={interviewDate}
+                    onChange={(e) => setInterviewDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    disabled={uploading}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="interviewee-name" className="block text-xs text-slate-500 mb-1">
+                    Interviewee Name
+                  </label>
+                  <input
+                    id="interviewee-name"
+                    type="text"
+                    value={intervieweeName}
+                    onChange={(e) => setIntervieweeName(e.target.value)}
+                    placeholder="John Smith"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    disabled={uploading}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="interviewee-role" className="block text-xs text-slate-500 mb-1">
+                    Interviewee Role
+                  </label>
+                  <input
+                    id="interviewee-role"
+                    type="text"
+                    value={intervieweeRole}
+                    onChange={(e) => setIntervieweeRole(e.target.value)}
+                    placeholder="Operations Manager"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    disabled={uploading}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="department" className="block text-xs text-slate-500 mb-1">
+                    Department
+                  </label>
+                  <input
+                    id="department"
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    placeholder="Operations"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    disabled={uploading}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Text Area */}
             <div>
               <label htmlFor="transcript-text" className="block text-sm font-medium text-slate-700 mb-2">
@@ -290,6 +380,75 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Interview Metadata Section for File Upload */}
+          <div className="border-t border-slate-200 pt-4 mt-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">
+              Interview Details (Optional)
+              {selectedFiles.length > 1 && (
+                <span className="text-xs font-normal text-slate-500 ml-2">
+                  — applies to all files
+                </span>
+              )}
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="file-interview-date" className="block text-xs text-slate-500 mb-1">
+                  Interview Date
+                </label>
+                <input
+                  id="file-interview-date"
+                  type="date"
+                  value={interviewDate}
+                  onChange={(e) => setInterviewDate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  disabled={uploading}
+                />
+              </div>
+              <div>
+                <label htmlFor="file-interviewee-name" className="block text-xs text-slate-500 mb-1">
+                  Interviewee Name
+                </label>
+                <input
+                  id="file-interviewee-name"
+                  type="text"
+                  value={intervieweeName}
+                  onChange={(e) => setIntervieweeName(e.target.value)}
+                  placeholder="John Smith"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  disabled={uploading}
+                />
+              </div>
+              <div>
+                <label htmlFor="file-interviewee-role" className="block text-xs text-slate-500 mb-1">
+                  Interviewee Role
+                </label>
+                <input
+                  id="file-interviewee-role"
+                  type="text"
+                  value={intervieweeRole}
+                  onChange={(e) => setIntervieweeRole(e.target.value)}
+                  placeholder="Operations Manager"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  disabled={uploading}
+                />
+              </div>
+              <div>
+                <label htmlFor="file-department" className="block text-xs text-slate-500 mb-1">
+                  Department
+                </label>
+                <input
+                  id="file-department"
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="Operations"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  disabled={uploading}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Upload Button */}

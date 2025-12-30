@@ -606,6 +606,42 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
       border: 1px solid var(--slate-200);
     }
 
+    /* Interactive tag links */
+    .tag-link {
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .tag-link:hover {
+      opacity: 0.8;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Highlighted card state */
+    .profile-card.highlighted {
+      box-shadow: 0 0 0 3px var(--amber-400) !important;
+      animation: pulse-highlight 2s ease-in-out;
+    }
+
+    @keyframes pulse-highlight {
+      0%, 100% { box-shadow: 0 0 0 3px var(--amber-400); }
+      50% { box-shadow: 0 0 0 6px var(--amber-200); }
+    }
+
+    /* Handoff role links */
+    .handoff-role-link {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 2px;
+    }
+
+    .handoff-role-link:hover {
+      color: var(--primary);
+    }
+
     /* Print & Mobile */
     @media print {
       .app-container { display: block; }
@@ -823,7 +859,7 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${roleProfiles.length ? `
             <div class="cards-grid">
               ${roleProfiles.map(role => `
-                <div class="profile-card">
+                <div class="profile-card" id="role-${slugify(role.title)}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box purple">${icons.users}</div>
                     <div>
@@ -836,8 +872,8 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
                       <p><strong>Responsibilities:</strong> ${role.responsibilities.slice(0, 2).map(escapeHtml).join(', ')}${role.responsibilities.length > 2 ? ` +${role.responsibilities.length - 2} more` : ''}</p>
                     ` : ''}
                     <div class="tags-row">
-                      ${role.workflows?.slice(0, 3).map(w => `<span class="tag" style="background: var(--indigo-100); color: var(--indigo-600);">${escapeHtml(w)}</span>`).join('')}
-                      ${role.tools?.slice(0, 2).map(t => `<span class="tag" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(t)}</span>`).join('')}
+                      ${role.workflows?.slice(0, 3).map(w => `<a href="#workflow-${slugify(w)}" class="tag tag-link" data-type="workflow" data-target="${escapeHtml(w)}" style="background: var(--indigo-100); color: var(--indigo-600);">${escapeHtml(w)}</a>`).join('')}
+                      ${role.tools?.slice(0, 2).map(t => `<a href="#tool-${slugify(t)}" class="tag tag-link" data-type="tool" data-target="${escapeHtml(t)}" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(t)}</a>`).join('')}
                     </div>
                   </div>
                   ${(role.issuesDetected?.length || role.trainingNeeds?.length) ? `
@@ -876,7 +912,7 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${workflowProfiles.length ? `
             <div class="cards-grid">
               ${workflowProfiles.map(wf => `
-                <div class="profile-card">
+                <div class="profile-card" id="workflow-${slugify(wf.name)}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box blue">${icons.workflow}</div>
                     <div>
@@ -890,12 +926,12 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
                   <div class="profile-card-content">
                     ${wf.steps?.length ? `<p><strong>Steps:</strong> ${wf.steps.length}</p>` : ''}
                     <div class="tags-row">
-                      ${wf.participants?.slice(0, 3).map(p => `<span class="tag">${escapeHtml(p)}</span>`).join('')}
+                      ${wf.participants?.slice(0, 3).map(p => `<a href="#role-${slugify(p)}" class="tag tag-link" data-type="role" data-target="${escapeHtml(p)}">${escapeHtml(p)}</a>`).join('')}
                       ${wf.participants?.length && wf.participants.length > 3 ? `<span class="tag">+${wf.participants.length - 3} more</span>` : ''}
                     </div>
                     ${wf.systems?.length ? `
                       <div class="tags-row" style="margin-top: 0.375rem;">
-                        ${wf.systems.slice(0, 3).map(s => `<span class="tag" style="background: var(--cyan-100); color: var(--cyan-600);">${escapeHtml(s)}</span>`).join('')}
+                        ${wf.systems.slice(0, 3).map(s => `<a href="#tool-${slugify(s)}" class="tag tag-link" data-type="tool" data-target="${escapeHtml(s)}" style="background: var(--cyan-100); color: var(--cyan-600);">${escapeHtml(s)}</a>`).join('')}
                       </div>
                     ` : ''}
                   </div>
@@ -955,9 +991,9 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
               ${data.highRiskHandoffs.slice(0, 8).map((h: any) => `
                 <div class="handoff-card">
                   <div class="handoff-flow">
-                    <span>${escapeHtml(h.fromRole)}</span>
+                    <a href="#role-${slugify(h.fromRole)}" class="handoff-role-link" data-type="role" data-target="${escapeHtml(h.fromRole)}">${escapeHtml(h.fromRole)}</a>
                     ${icons.arrowRight}
-                    <span>${escapeHtml(h.toRole)}</span>
+                    <a href="#role-${slugify(h.toRole)}" class="handoff-role-link" data-type="role" data-target="${escapeHtml(h.toRole)}">${escapeHtml(h.toRole)}</a>
                     ${h.occurrences ? `<span class="badge badge-orange" style="margin-left: auto;">${h.occurrences} occurrences</span>` : ''}
                   </div>
                   <div class="handoff-process">${escapeHtml(h.process)}</div>
@@ -983,7 +1019,7 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${toolProfiles.length ? `
             <div class="cards-grid">
               ${toolProfiles.map(tool => `
-                <div class="profile-card" style="${tool.gaps?.some(g => g.severity === 'high') ? 'border-left: 3px solid var(--red-500);' : ''}">
+                <div class="profile-card" id="tool-${slugify(tool.name)}" style="${tool.gaps?.some(g => g.severity === 'high') ? 'border-left: 3px solid var(--red-500);' : ''}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box ${getCategoryColor(tool.category)}">${icons.wrench}</div>
                     <div>
@@ -997,13 +1033,14 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
                   <div class="profile-card-content">
                     ${tool.intendedPurpose ? `<p style="font-size: 0.85rem;"><strong>Purpose:</strong> ${escapeHtml(tool.intendedPurpose)}</p>` : ''}
                     ${tool.usedBy?.length ? `
-                      <p style="font-size: 0.8rem; color: var(--slate-500); margin-top: 0.5rem;">
-                        Used by: ${tool.usedBy.slice(0, 3).map(u => u.role).join(', ')}${tool.usedBy.length > 3 ? ` +${tool.usedBy.length - 3} more` : ''}
-                      </p>
+                      <div class="tags-row" style="margin-top: 0.5rem;">
+                        ${tool.usedBy.slice(0, 3).map(u => `<a href="#role-${slugify(u.role)}" class="tag tag-link" data-type="role" data-target="${escapeHtml(u.role)}">${escapeHtml(u.role)}</a>`).join('')}
+                        ${tool.usedBy.length > 3 ? `<span class="tag">+${tool.usedBy.length - 3} more</span>` : ''}
+                      </div>
                     ` : ''}
                     ${tool.workflows?.length ? `
-                      <div class="tags-row">
-                        ${tool.workflows.slice(0, 2).map(w => `<span class="tag" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(w.name)}</span>`).join('')}
+                      <div class="tags-row" style="margin-top: 0.375rem;">
+                        ${tool.workflows.slice(0, 2).map(w => `<a href="#workflow-${slugify(w.name)}" class="tag tag-link" data-type="workflow" data-target="${escapeHtml(w.name)}" style="background: var(--blue-100); color: var(--blue-600);">${escapeHtml(w.name)}</a>`).join('')}
                       </div>
                     ` : ''}
                   </div>
@@ -1053,7 +1090,7 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${trainingGapProfiles.length ? `
             <div class="cards-grid">
               ${trainingGapProfiles.map(gap => `
-                <div class="profile-card" style="${gap.risk?.severity === 'critical' || gap.risk?.severity === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+                <div class="profile-card" id="training-${slugify(gap.area)}" style="${gap.risk?.severity === 'critical' || gap.risk?.severity === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box ${gap.category === 'system' ? 'cyan' : gap.category === 'process' ? 'blue' : gap.category === 'skill' ? 'purple' : 'amber'}">${icons.graduationCap}</div>
                     <div>
@@ -1069,7 +1106,10 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
                     ${gap.desiredState ? `<p style="font-size: 0.85rem;"><strong>Target:</strong> ${escapeHtml(gap.desiredState)}</p>` : ''}
                     ${gap.affectedRoles?.length ? `
                       <div class="tags-row">
-                        ${gap.affectedRoles.slice(0, 3).map(r => `<span class="tag">${escapeHtml(typeof r === 'string' ? r : r.role)}</span>`).join('')}
+                        ${gap.affectedRoles.slice(0, 3).map(r => {
+                          const roleName = typeof r === 'string' ? r : r.role;
+                          return `<a href="#role-${slugify(roleName)}" class="tag tag-link" data-type="role" data-target="${escapeHtml(roleName)}">${escapeHtml(roleName)}</a>`;
+                        }).join('')}
                       </div>
                     ` : ''}
                   </div>
@@ -1219,6 +1259,44 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
     });
 
     sections.forEach(section => observer.observe(section));
+
+    // Cross-reference tag link click handler
+    function highlightTarget(type, name) {
+      // Slugify the name to match ID format
+      const slug = name.toLowerCase().replace(/ +/g, '-').replace(/[^a-z0-9-]/g, '');
+      const targetId = type + '-' + slug;
+      const target = document.getElementById(targetId);
+
+      if (target) {
+        // Remove any existing highlights
+        document.querySelectorAll('.profile-card.highlighted').forEach(el => {
+          el.classList.remove('highlighted');
+        });
+
+        // Scroll to the target element
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Add highlight effect
+        target.classList.add('highlighted');
+
+        // Remove highlight after animation
+        setTimeout(() => {
+          target.classList.remove('highlighted');
+        }, 3000);
+      }
+    }
+
+    // Attach click handlers to all tag links
+    document.querySelectorAll('.tag-link, .handoff-role-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const type = link.getAttribute('data-type');
+        const targetName = link.getAttribute('data-target');
+        if (type && targetName) {
+          highlightTarget(type, targetName);
+        }
+      });
+    });
   </script>
 </body>
 </html>`;
@@ -1227,6 +1305,10 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
 }
 
 // Helper functions
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
     '&': '&amp;',
@@ -1330,7 +1412,7 @@ function renderRecommendationCard(rec: RecommendationProfile): string {
   };
 
   return `
-    <div class="profile-card" style="${rec.priority === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+    <div class="profile-card" id="rec-${slugify(rec.title)}" style="${rec.priority === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
       <div class="profile-card-header">
         <div class="profile-icon-box ${categoryColors[rec.category] || 'indigo'}">${icons.lightbulb}</div>
         <div>
@@ -1346,7 +1428,7 @@ function renderRecommendationCard(rec: RecommendationProfile): string {
         ${rec.expectedImpact ? `<p style="font-size: 0.85rem;"><strong>Impact:</strong> ${escapeHtml(rec.expectedImpact)}</p>` : ''}
         ${rec.relatedItems?.roles?.length ? `
           <div class="tags-row">
-            ${rec.relatedItems.roles.slice(0, 3).map(r => `<span class="tag">${escapeHtml(r)}</span>`).join('')}
+            ${rec.relatedItems.roles.slice(0, 3).map(r => `<a href="#role-${slugify(r)}" class="tag tag-link" data-type="role" data-target="${escapeHtml(r)}">${escapeHtml(r)}</a>`).join('')}
           </div>
         ` : ''}
       </div>

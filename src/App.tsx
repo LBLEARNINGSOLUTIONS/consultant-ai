@@ -146,12 +146,17 @@ function App() {
         continue;
       }
 
-      // Create interview in database
+      // Create interview in database with metadata
       const { data: interview, error: createError } = await createInterview({
         user_id: user.id,
         title: result.filename.replace(/\.txt$/i, ''),
         transcript_text: result.text,
         analysis_status: 'pending',
+        // Interview metadata
+        interview_date: result.interviewDate || null,
+        interviewee_name: result.intervieweeName || null,
+        interviewee_role: result.intervieweeRole || null,
+        department: result.department || null,
       });
 
       // Start analysis
@@ -696,14 +701,35 @@ function App() {
                               </button>
                             </div>
 
+                            {/* Interview Metadata */}
+                            {(interview.interviewee_name || interview.interviewee_role) && (
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {interview.interviewee_name}
+                                {interview.interviewee_name && interview.interviewee_role && ' • '}
+                                {interview.interviewee_role}
+                              </p>
+                            )}
+
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-600">Status:</span>
                                 {getStatusBadge(interview.analysis_status, interview.id)}
                               </div>
 
+                              {/* Interview date and department */}
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                {interview.interview_date && (
+                                  <span>Interviewed: {formatDate(interview.interview_date)}</span>
+                                )}
+                                {interview.department && (
+                                  <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">
+                                    {interview.department}
+                                  </span>
+                                )}
+                              </div>
+
                               <div className="text-xs text-slate-500">
-                                Created {formatRelative(interview.created_at)}
+                                Uploaded {formatRelative(interview.created_at)}
                               </div>
 
                               {interview.analyzed_at && (

@@ -83,13 +83,35 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-6 flex-shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-1">
                 <FileText className="w-6 h-6 flex-shrink-0" />
                 <h2 className="text-2xl font-bold truncate">{interview.title}</h2>
               </div>
-              <p className="text-indigo-100 text-sm">
-                Analyzed {interview.analyzed_at ? formatDate(interview.analyzed_at) : 'recently'}
-              </p>
+              {/* Interview Metadata */}
+              {(interview.interviewee_name || interview.interviewee_role || interview.department) && (
+                <div className="flex items-center gap-2 mb-2 text-indigo-100 text-sm">
+                  {interview.interviewee_name && <span>{interview.interviewee_name}</span>}
+                  {interview.interviewee_role && (
+                    <span className="opacity-75">• {interview.interviewee_role}</span>
+                  )}
+                  {interview.department && (
+                    <span className="px-2 py-0.5 bg-indigo-500/30 rounded text-xs">
+                      {interview.department}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-indigo-100 text-sm">
+                {interview.interview_date && (
+                  <span>Interviewed: {formatDate(interview.interview_date)}</span>
+                )}
+                {interview.analyzed_at && (
+                  <span>Analyzed: {formatDate(interview.analyzed_at)}</span>
+                )}
+                {!interview.interview_date && !interview.analyzed_at && (
+                  <span>Analyzed recently</span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2 ml-4">
