@@ -119,6 +119,52 @@ export interface WorkflowProfile {
   interviewIds: string[];
 }
 
+// Tool Profile for detailed technology analysis
+export interface ToolProfile {
+  id: string;
+  name: string;
+  count: number;              // How many interviews mentioned this tool
+  category: 'crm' | 'pm' | 'spreadsheet' | 'communication' | 'erp' | 'custom' | 'other';
+
+  // Usage context
+  intendedPurpose: string;    // What it's supposed to be used for
+  actualUsage: string[];      // What it's actually used for (collected from interviews)
+  frequency: string;          // How often it's used
+
+  // Who uses it
+  usedBy: Array<{
+    role: string;
+    purpose: string;          // What this role uses it for
+    count: number;
+  }>;
+
+  // Where it's used
+  workflows: Array<{
+    name: string;
+    step?: string;            // Which step uses this tool
+    count: number;
+  }>;
+
+  // Integrations
+  integratesWith: string[];   // Other tools it connects to
+  dataFlows: Array<{          // How data moves
+    direction: 'in' | 'out';
+    system: string;
+    dataType: string;
+  }>;
+
+  // Problems & Gaps
+  gaps: Array<{
+    type: 'underutilized' | 'misused' | 'overlap' | 'data-handoff' | 'missing-integration';
+    description: string;
+    severity: 'low' | 'medium' | 'high';
+  }>;
+  limitations: string[];
+
+  // Traceability
+  interviewIds: string[];
+}
+
 // Role Profile for detailed role view
 export interface RoleProfile {
   id: string;

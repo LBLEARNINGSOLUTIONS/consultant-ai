@@ -1,4 +1,4 @@
-import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep } from '../types/analysis';
+import { InterviewAnalysis, Workflow, PainPoint, Tool, Role, TrainingGap, HandoffRisk, CompanySummaryData, RoleProfile, WorkflowProfile, WorkflowStep, ToolProfile } from '../types/analysis';
 import { Interview } from '../types/database';
 import { nanoid } from 'nanoid';
 import {
@@ -948,4 +948,279 @@ export function buildWorkflowProfiles(interviews: Interview[]): WorkflowProfile[
 
   // Sort by count descending
   return workflowProfiles.sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Build comprehensive tool profiles from interview data
+ * Aggregates tools with usage context, workflows, and gap analysis
+ */
+export function buildToolProfiles(interviews: Interview[]): ToolProfile[] {
+  const completedInterviews = interviews.filter(i => i.analysis_status === 'completed');
+
+  // Category detection based on common tool names
+  const categoryPatterns: Record<string, RegExp[]> = {
+    crm: [/salesforce/i, /hubspot/i, /zoho/i, /pipedrive/i, /dynamics/i, /crm/i],
+    pm: [/asana/i, /monday/i, /trello/i, /jira/i, /clickup/i, /basecamp/i, /notion/i, /project/i],
+    spreadsheet: [/excel/i, /sheets/i, /spreadsheet/i, /airtable/i, /smartsheet/i],
+    communication: [/slack/i, /teams/i, /zoom/i, /meet/i, /email/i, /outlook/i, /gmail/i],
+    erp: [/sap/i, /oracle/i, /netsuite/i, /odoo/i, /erp/i, /quickbooks/i, /sage/i],
+  };
+
+  const detectCategory = (toolName: string): ToolProfile['category'] => {
+    const name = toolName.toLowerCase();
+    for (const [category, patterns] of Object.entries(categoryPatterns)) {
+      if (patterns.some(pattern => pattern.test(name))) {
+        return category as ToolProfile['category'];
+      }
+    }
+    return 'other';
+  };
+
+  // Aggregate tool data
+  const toolMap = new Map<string, {
+    name: string;
+    count: number;
+    category: ToolProfile['category'];
+    purposes: Set<string>;
+    usedByMap: Map<string, { role: string; purposes: Set<string>; count: number }>;
+    workflowsMap: Map<string, { name: string; steps: Set<string>; count: number }>;
+    integratesWith: Set<string>;
+    limitations: Set<string>;
+    frequencies: string[];
+    interviewIds: string[];
+  }>();
+
+  // Collect workflow data to cross-reference
+  const workflowParticipantTools = new Map<string, Set<string>>(); // workflow -> tools
+
+  completedInterviews.forEach(interview => {
+    // Process tools
+    const tools = (interview.tools as unknown as Tool[]) || [];
+    tools.forEach(tool => {
+      const key = tool.name.toLowerCase();
+      const existing = toolMap.get(key);
+
+      if (existing) {
+        existing.count++;
+        if (tool.purpose) existing.purposes.add(tool.purpose);
+        tool.usedBy.forEach(user => {
+          const userKey = user.toLowerCase();
+          const userData = existing.usedByMap.get(userKey);
+          if (userData) {
+            userData.count++;
+            if (tool.purpose) userData.purposes.add(tool.purpose);
+          } else {
+            existing.usedByMap.set(userKey, {
+              role: user,
+              purposes: new Set(tool.purpose ? [tool.purpose] : []),
+              count: 1,
+            });
+          }
+        });
+        if (tool.integrations) {
+          tool.integrations.forEach(i => existing.integratesWith.add(i));
+        }
+        if (tool.limitations) existing.limitations.add(tool.limitations);
+        if (tool.frequency) existing.frequencies.push(tool.frequency);
+        existing.interviewIds.push(interview.id);
+      } else {
+        const usedByMap = new Map<string, { role: string; purposes: Set<string>; count: number }>();
+        tool.usedBy.forEach(user => {
+          usedByMap.set(user.toLowerCase(), {
+            role: user,
+            purposes: new Set(tool.purpose ? [tool.purpose] : []),
+            count: 1,
+          });
+        });
+
+        toolMap.set(key, {
+          name: tool.name,
+          count: 1,
+          category: detectCategory(tool.name),
+          purposes: new Set(tool.purpose ? [tool.purpose] : []),
+          usedByMap,
+          workflowsMap: new Map(),
+          integratesWith: new Set(tool.integrations || []),
+          limitations: new Set(tool.limitations ? [tool.limitations] : []),
+          frequencies: tool.frequency ? [tool.frequency] : [],
+          interviewIds: [interview.id],
+        });
+      }
+    });
+
+    // Process workflows to find tool associations
+    const workflows = (interview.workflows as unknown as Workflow[]) || [];
+    const roles = (interview.roles as unknown as Role[]) || [];
+
+    // Map roles to their tools
+    const roleTools = new Map<string, string[]>();
+    roles.forEach(role => {
+      roleTools.set(role.title.toLowerCase(), role.tools);
+    });
+
+    workflows.forEach(workflow => {
+      // Associate tools used by workflow participants
+      workflow.participants.forEach(participant => {
+        const participantTools = roleTools.get(participant.toLowerCase()) || [];
+        participantTools.forEach(toolName => {
+          const toolKey = toolName.toLowerCase();
+          const toolData = toolMap.get(toolKey);
+          if (toolData) {
+            const wfKey = workflow.name.toLowerCase();
+            const wfData = toolData.workflowsMap.get(wfKey);
+            if (wfData) {
+              wfData.count++;
+            } else {
+              toolData.workflowsMap.set(wfKey, {
+                name: workflow.name,
+                steps: new Set(),
+                count: 1,
+              });
+            }
+          }
+
+          // Also track for overlap detection
+          const existing = workflowParticipantTools.get(workflow.name.toLowerCase()) || new Set<string>();
+          existing.add(toolKey);
+          workflowParticipantTools.set(workflow.name.toLowerCase(), existing);
+        });
+      });
+    });
+  });
+
+  // Detect gaps for all tools
+  const allToolNames = Array.from(toolMap.keys());
+  const categoryTools = new Map<string, string[]>(); // category -> tool names
+  toolMap.forEach((data, key) => {
+    const existing = categoryTools.get(data.category) || [];
+    existing.push(key);
+    categoryTools.set(data.category, existing);
+  });
+
+  // Build tool profiles with gap analysis
+  const toolProfiles: ToolProfile[] = [];
+
+  toolMap.forEach((data) => {
+    const gaps: ToolProfile['gaps'] = [];
+
+    // Gap detection: Underutilized
+    if (data.count === 1) {
+      gaps.push({
+        type: 'underutilized',
+        description: 'Tool mentioned in only one interview - may not be widely adopted',
+        severity: 'low',
+      });
+    }
+
+    // Gap detection: Overlap - multiple tools in same category
+    const sameCategory = categoryTools.get(data.category) || [];
+    if (sameCategory.length > 1 && data.category !== 'other') {
+      const otherTools = sameCategory
+        .filter(t => t !== data.name.toLowerCase())
+        .map(t => toolMap.get(t)?.name || t);
+      if (otherTools.length > 0) {
+        gaps.push({
+          type: 'overlap',
+          description: `Multiple ${data.category.toUpperCase()} tools in use: ${otherTools.slice(0, 2).join(', ')}`,
+          severity: 'medium',
+        });
+      }
+    }
+
+    // Gap detection: Missing integration (tools in same workflow but no integration)
+    data.workflowsMap.forEach((wfData, wfKey) => {
+      const workflowTools = workflowParticipantTools.get(wfKey) || new Set<string>();
+      workflowTools.forEach(otherToolKey => {
+        if (otherToolKey !== data.name.toLowerCase()) {
+          const otherTool = toolMap.get(otherToolKey);
+          if (otherTool && !data.integratesWith.has(otherTool.name)) {
+            // Check if this tool is commonly integrated
+            const commonIntegrations = ['excel', 'sheets', 'email', 'outlook', 'gmail'];
+            if (!commonIntegrations.some(c => otherToolKey.includes(c))) {
+              // Only flag if not already flagged for this workflow
+              const existingGap = gaps.find(
+                g => g.type === 'missing-integration' && g.description.includes(otherTool.name)
+              );
+              if (!existingGap) {
+                gaps.push({
+                  type: 'missing-integration',
+                  description: `No integration with ${otherTool.name} (both used in ${wfData.name})`,
+                  severity: 'medium',
+                });
+              }
+            }
+          }
+        }
+      });
+    });
+
+    // Gap detection: Data handoff (spreadsheet usage often indicates manual data transfer)
+    if (data.category === 'spreadsheet') {
+      const hasOtherSystems = allToolNames.some(t => {
+        const tData = toolMap.get(t);
+        return tData && tData.category !== 'spreadsheet' && tData.category !== 'other';
+      });
+      if (hasOtherSystems) {
+        gaps.push({
+          type: 'data-handoff',
+          description: 'Spreadsheet usage alongside other systems may indicate manual data transfer',
+          severity: 'low',
+        });
+      }
+    }
+
+    // Check limitations for potential issues
+    data.limitations.forEach(limitation => {
+      const lowerLimit = limitation.toLowerCase();
+      if (lowerLimit.includes('manual') || lowerLimit.includes('export') || lowerLimit.includes('copy')) {
+        gaps.push({
+          type: 'data-handoff',
+          description: limitation,
+          severity: 'medium',
+        });
+      }
+    });
+
+    // Determine most common frequency
+    const freqCounts = new Map<string, number>();
+    data.frequencies.forEach(f => {
+      freqCounts.set(f, (freqCounts.get(f) || 0) + 1);
+    });
+    let frequency = 'unknown';
+    let maxCount = 0;
+    freqCounts.forEach((count, freq) => {
+      if (count > maxCount) {
+        maxCount = count;
+        frequency = freq;
+      }
+    });
+
+    toolProfiles.push({
+      id: nanoid(),
+      name: data.name,
+      count: data.count,
+      category: data.category,
+      intendedPurpose: Array.from(data.purposes)[0] || 'Not specified',
+      actualUsage: Array.from(data.purposes),
+      frequency,
+      usedBy: Array.from(data.usedByMap.values()).map(u => ({
+        role: u.role,
+        purpose: Array.from(u.purposes).join('; ') || 'General use',
+        count: u.count,
+      })).sort((a, b) => b.count - a.count),
+      workflows: Array.from(data.workflowsMap.values()).map(w => ({
+        name: w.name,
+        step: Array.from(w.steps)[0],
+        count: w.count,
+      })).sort((a, b) => b.count - a.count),
+      integratesWith: Array.from(data.integratesWith),
+      dataFlows: [], // Would need more detailed analysis data
+      gaps: gaps.slice(0, 5), // Limit to top 5 gaps
+      limitations: Array.from(data.limitations),
+      interviewIds: data.interviewIds,
+    });
+  });
+
+  // Sort by count descending
+  return toolProfiles.sort((a, b) => b.count - a.count);
 }
