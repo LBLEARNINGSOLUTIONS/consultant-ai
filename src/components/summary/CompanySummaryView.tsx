@@ -70,7 +70,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const tools = data.commonTools || []; // Read-only for ExecutiveSummarySection
   const [painPoints, setPainPoints] = useState(data.criticalPainPoints || []);
   const [handoffs, setHandoffs] = useState(data.highRiskHandoffs || []);
-  const [recommendations, setRecommendations] = useState(data.recommendations || []);
+  // Legacy recommendations (used by ExecutiveSummarySection, editing now uses recommendationProfiles)
+  const recommendations = data.recommendations || [];
   const [roleDistribution, setRoleDistribution] = useState(data.roleDistribution || {});
   const [companyContext, setCompanyContext] = useState<CompanyContext>(
     (data as unknown as { companyContext?: CompanyContext }).companyContext || {}
