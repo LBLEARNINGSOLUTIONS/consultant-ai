@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText, TrendingUp, AlertTriangle, Wrench } from 'lucide-react';
 import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
@@ -17,12 +17,14 @@ import { TrainingGapsSection } from './sections/TrainingGapsSection';
 import { RecommendationsSection } from './sections/RecommendationsSection';
 import { EvidenceSection } from './sections/EvidenceSection';
 import { ExportsSection } from './sections/ExportsSection';
+import { EditableTitle } from './EditableTitle';
+import { SummaryStatsModal } from './SummaryStatsModal';
 
 interface CompanySummaryViewProps {
   summary: CompanySummary;
   interviews: Interview[];
   onBack: () => void;
-  onUpdate?: (id: string, updates: { summary_data?: Json }) => Promise<{ error: string | null }>;
+  onUpdate?: (id: string, updates: { summary_data?: Json; title?: string }) => Promise<{ error: string | null }>;
   onViewInterview?: (interview: Interview) => void;
 }
 
@@ -46,6 +48,7 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const data = summary.summary_data as unknown as CompanySummaryData;
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState<SectionId>('executive');
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   // Analytics data from interviews
   const { metrics } = useAnalyticsDashboard(interviews);
@@ -434,10 +437,43 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">{summary.title}</h1>
-              <p className="text-indigo-100 text-sm">
-                Generated {formatDate(summary.created_at)} • {data.totalInterviews} interviews analyzed
-              </p>
+              <EditableTitle
+                value={summary.title}
+                onSave={async (newTitle) => {
+                  if (onUpdate) {
+                    const result = await onUpdate(summary.id, { title: newTitle });
+                    if (result.error) {
+                      throw new Error(result.error);
+                    }
+                  }
+                }}
+                size="lg"
+              />
+              <div className="text-indigo-100 text-sm flex items-center gap-2 flex-wrap">
+                <span>Generated {formatDate(summary.created_at)}</span>
+                <span>•</span>
+                <button
+                  onClick={() => setShowStatsModal(true)}
+                  className="flex items-center gap-3 hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                >
+                  <span className="flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5" />
+                    {data.totalInterviews} interviews
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    {data.topWorkflows?.length || 0} workflows
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {data.criticalPainPoints?.length || 0} pain points
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Wrench className="w-3.5 h-3.5" />
+                    {data.commonTools?.length || 0} tools
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -455,6 +491,23 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
           </div>
         </main>
       </div>
+
+      {/* Stats Modal */}
+      <SummaryStatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        data={data}
+        onUpdate={async (updates) => {
+          if (onUpdate) {
+            const newData = { ...data, ...updates };
+            const result = await onUpdate(summary.id, { summary_data: newData as unknown as Json });
+            if (result.error) {
+              throw new Error(result.error);
+            }
+          }
+        }}
+        linkedInterviews={interviews.map(i => ({ id: i.id, title: i.title }))}
+      />
     </div>
   );
 }

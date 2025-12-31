@@ -15,10 +15,13 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X, Merge, RefreshCw } from 'lucide-react';
+import { FileText, LogOut, Plus, Trash2, Eye, BarChart3, CheckSquare, Square, PieChart, GripVertical, Edit2, Check, X, Merge, RefreshCw, TrendingUp, AlertTriangle, Wrench } from 'lucide-react';
 import { formatDate, formatRelative } from './utils/dateFormatters';
 import { Badge } from './components/analysis/Badge';
 import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
+import { EditableTitleDark } from './components/summary/EditableTitle';
+import { SummaryStatsModal } from './components/summary/SummaryStatsModal';
+import { CompanySummaryData } from './types/analysis';
 
 // Draggable interview card wrapper
 function DraggableCard({ id, children }: { id: string; children: React.ReactNode }) {
@@ -90,6 +93,7 @@ function App() {
   const [selectedSummary, setSelectedSummary] = useState<CompanySummary | null>(null);
   const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [editingSummaryStats, setEditingSummaryStats] = useState<CompanySummary | null>(null);
 
   // Filter interviews by selected company and search/filters - must be before early returns to maintain hooks order
   const {
@@ -839,7 +843,7 @@ function App() {
         ) : viewMode === 'summaries' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {summaries.map(summary => {
-              const data = summary.summary_data as any;
+              const data = summary.summary_data as CompanySummaryData | null;
               return (
                 <div
                   key={summary.id}
@@ -847,9 +851,17 @@ function App() {
                   onClick={() => setSelectedSummary(summary)}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <h3 className="font-semibold text-slate-900 flex-1 line-clamp-2">
-                      {summary.title}
-                    </h3>
+                    <EditableTitleDark
+                      value={summary.title}
+                      onSave={async (newTitle) => {
+                        const result = await updateSummary(summary.id, { title: newTitle });
+                        if (result.error) {
+                          throw new Error(result.error);
+                        }
+                      }}
+                      size="sm"
+                      className="flex-1"
+                    />
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -868,32 +880,42 @@ function App() {
                     </div>
 
                     {data && (
-                      <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                        <div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingSummaryStats(summary);
+                        }}
+                        className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs w-full text-left hover:bg-slate-50 rounded-lg -mx-2 px-2 py-2 transition-colors"
+                      >
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-3 h-3 text-slate-400" />
                           <span className="text-slate-600">Interviews:</span>{' '}
                           <span className="font-semibold text-slate-900">
                             {data.totalInterviews || summary.interview_ids?.length || 0}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3 text-blue-500" />
                           <span className="text-slate-600">Workflows:</span>{' '}
                           <span className="font-semibold text-slate-900">
                             {data.topWorkflows?.length || 0}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-500" />
                           <span className="text-slate-600">Pain Points:</span>{' '}
                           <span className="font-semibold text-slate-900">
                             {data.criticalPainPoints?.length || 0}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1">
+                          <Wrench className="w-3 h-3 text-slate-500" />
                           <span className="text-slate-600">Tools:</span>{' '}
                           <span className="font-semibold text-slate-900">
                             {data.commonTools?.length || 0}
                           </span>
                         </div>
-                      </div>
+                      </button>
                     )}
 
                     <button
@@ -977,6 +999,26 @@ function App() {
         onSubmit={editingCompany ? handleUpdateCompany : handleCreateCompany}
         editingCompany={editingCompany}
       />
+
+      {/* Summary Stats Modal */}
+      {editingSummaryStats && (
+        <SummaryStatsModal
+          isOpen={!!editingSummaryStats}
+          onClose={() => setEditingSummaryStats(null)}
+          data={editingSummaryStats.summary_data as unknown as CompanySummaryData}
+          onUpdate={async (updates) => {
+            const currentData = editingSummaryStats.summary_data as unknown as CompanySummaryData;
+            const newData = { ...currentData, ...updates };
+            const result = await updateSummary(editingSummaryStats.id, { summary_data: newData as any });
+            if (result.error) {
+              throw new Error(result.error);
+            }
+          }}
+          linkedInterviews={interviews
+            .filter(i => editingSummaryStats.interview_ids?.includes(i.id))
+            .map(i => ({ id: i.id, title: i.title }))}
+        />
+      )}
     </div>
   );
 }
