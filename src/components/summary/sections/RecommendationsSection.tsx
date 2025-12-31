@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import { Lightbulb, Plus, Search, Filter, Zap, Clock, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { RecommendationProfile } from '../../../types/analysis';
 import { RecommendationCard } from './RecommendationCard';
+import { RecommendationListRow } from './RecommendationListRow';
 import { RecommendationDetailModal } from './RecommendationDetailModal';
 import { RecommendationEditModal } from './RecommendationEditModal';
+import { ViewModeToggle, ViewMode } from '../ViewModeToggle';
 import { nanoid } from 'nanoid';
 
 interface RecommendationsSectionProps {
@@ -50,6 +52,7 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
   const [selectedRec, setSelectedRec] = useState<RecommendationProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<RecommendationProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('tile');
   const [categoryFilter, setCategoryFilter] = useState<RecommendationProfile['category'] | 'all'>('all');
   const [phaseFilter, setPhaseFilter] = useState<RecommendationProfile['phase'] | 'all'>('all');
   const [effortFilter, setEffortFilter] = useState<RecommendationProfile['levelOfEffort'] | 'all'>('all');
@@ -321,6 +324,9 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
           <option value="medium">Medium Effort</option>
           <option value="high">High Effort</option>
         </select>
+
+        {/* View mode toggle */}
+        <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
       </div>
 
       {/* Content */}
@@ -335,19 +341,34 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
           </p>
         </div>
       ) : phaseFilter !== 'all' ? (
-        // Filtered view - show cards directly
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredProfiles.map(profile => (
-            <RecommendationCard
-              key={profile.id}
-              profile={profile}
-              onClick={() => setSelectedRec(profile)}
-              onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
-              onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
-              canEdit={canEdit}
-            />
-          ))}
-        </div>
+        // Filtered view - show cards or list directly
+        viewMode === 'tile' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredProfiles.map(profile => (
+              <RecommendationCard
+                key={profile.id}
+                profile={profile}
+                onClick={() => setSelectedRec(profile)}
+                onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+                onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filteredProfiles.map(profile => (
+              <RecommendationListRow
+                key={profile.id}
+                profile={profile}
+                onClick={() => setSelectedRec(profile)}
+                onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+                onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        )
       ) : (
         // Grouped by phase view
         <div className="space-y-6">
@@ -380,18 +401,33 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
                 {/* Phase content */}
                 {isExpanded && (
                   <div className="p-4 pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {phaseRecs.map(profile => (
-                        <RecommendationCard
-                          key={profile.id}
-                          profile={profile}
-                          onClick={() => setSelectedRec(profile)}
-                          onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
-                          onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
-                          canEdit={canEdit}
-                        />
-                      ))}
-                    </div>
+                    {viewMode === 'tile' ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {phaseRecs.map(profile => (
+                          <RecommendationCard
+                            key={profile.id}
+                            profile={profile}
+                            onClick={() => setSelectedRec(profile)}
+                            onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+                            onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                            canEdit={canEdit}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {phaseRecs.map(profile => (
+                          <RecommendationListRow
+                            key={profile.id}
+                            profile={profile}
+                            onClick={() => setSelectedRec(profile)}
+                            onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
+                            onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                            canEdit={canEdit}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

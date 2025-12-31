@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import { GraduationCap, Plus, Search, Filter, AlertTriangle, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import { TrainingGapProfile } from '../../../types/analysis';
 import { TrainingGapCard } from './TrainingGapCard';
+import { TrainingGapListRow } from './TrainingGapListRow';
 import { TrainingGapDetailModal } from './TrainingGapDetailModal';
 import { TrainingGapEditModal } from './TrainingGapEditModal';
+import { ViewModeToggle, ViewMode } from '../ViewModeToggle';
 import { nanoid } from 'nanoid';
 
 interface TrainingGapsSectionProps {
@@ -25,6 +27,7 @@ export function TrainingGapsSection({ trainingGapProfiles = [], onUpdateProfiles
   const [selectedGap, setSelectedGap] = useState<TrainingGapProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<TrainingGapProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('tile');
   const [categoryFilter, setCategoryFilter] = useState<TrainingGapProfile['category'] | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TrainingGapProfile['priority'] | 'all'>('all');
   const [riskFilter, setRiskFilter] = useState<TrainingGapProfile['risk']['severity'] | 'all'>('all');
@@ -267,6 +270,9 @@ export function TrainingGapsSection({ trainingGapProfiles = [], onUpdateProfiles
             <Users className="w-4 h-4" />
             Group by Role
           </button>
+
+          {/* View mode toggle */}
+          <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
       )}
 
@@ -362,29 +368,58 @@ export function TrainingGapsSection({ trainingGapProfiles = [], onUpdateProfiles
                   </button>
                   {isExpanded && (
                     <div className="border-t border-slate-100 p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {profiles.map((profile) => (
-                          <TrainingGapCard
-                            key={profile.id}
-                            profile={profile}
-                            onClick={() => setSelectedGap(profile)}
-                            onEdit={() => handleEditProfile(profile)}
-                            onDelete={() => confirmDelete(profile.id)}
-                            canEdit={!!onUpdateProfiles}
-                          />
-                        ))}
-                      </div>
+                      {viewMode === 'tile' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {profiles.map((profile) => (
+                            <TrainingGapCard
+                              key={profile.id}
+                              profile={profile}
+                              onClick={() => setSelectedGap(profile)}
+                              onEdit={() => handleEditProfile(profile)}
+                              onDelete={() => confirmDelete(profile.id)}
+                              canEdit={!!onUpdateProfiles}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {profiles.map((profile) => (
+                            <TrainingGapListRow
+                              key={profile.id}
+                              profile={profile}
+                              onClick={() => setSelectedGap(profile)}
+                              onEdit={() => handleEditProfile(profile)}
+                              onDelete={() => confirmDelete(profile.id)}
+                              canEdit={!!onUpdateProfiles}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-        ) : (
+        ) : viewMode === 'tile' ? (
           // Grid view
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProfiles.map((profile) => (
               <TrainingGapCard
+                key={profile.id}
+                profile={profile}
+                onClick={() => setSelectedGap(profile)}
+                onEdit={() => handleEditProfile(profile)}
+                onDelete={() => confirmDelete(profile.id)}
+                canEdit={!!onUpdateProfiles}
+              />
+            ))}
+          </div>
+        ) : (
+          // List view
+          <div className="flex flex-col gap-2">
+            {filteredProfiles.map((profile) => (
+              <TrainingGapListRow
                 key={profile.id}
                 profile={profile}
                 onClick={() => setSelectedGap(profile)}

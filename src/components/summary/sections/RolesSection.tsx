@@ -273,10 +273,24 @@ export function RolesSection({ roleDistribution, roleProfiles = [], onUpdate, on
               Clear search
             </button>
           </div>
-        ) : (
+        ) : viewMode === 'tile' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProfiles.map((profile) => (
               <RoleProfileCard
+                key={profile.id}
+                profile={profile}
+                onClick={() => setSelectedRole(profile)}
+                onEdit={() => handleEditProfile(profile)}
+                onMerge={() => handleMergeProfile(profile)}
+                onDelete={() => confirmDelete(profile.id)}
+                canEdit={!!onUpdateProfiles}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filteredProfiles.map((profile) => (
+              <RoleListRow
                 key={profile.id}
                 profile={profile}
                 onClick={() => setSelectedRole(profile)}

@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react';
 import { Wrench, Search, Plus, Filter, AlertTriangle } from 'lucide-react';
 import { ToolProfile } from '../../../types/analysis';
 import { ToolCard } from './ToolCard';
+import { ToolListRow } from './ToolListRow';
 import { ToolDetailModal } from './ToolDetailModal';
 import { ToolEditModal } from './ToolEditModal';
 import { ToolMergeModal } from './ToolMergeModal';
+import { ViewModeToggle, ViewMode } from '../ViewModeToggle';
 import { nanoid } from 'nanoid';
 
 interface TechnologySectionProps {
@@ -29,6 +31,7 @@ export function TechnologySection({ toolProfiles = [], onUpdateProfiles }: Techn
   const [editingProfile, setEditingProfile] = useState<ToolProfile | null>(null);
   const [mergingProfile, setMergingProfile] = useState<ToolProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('tile');
   const [categoryFilter, setCategoryFilter] = useState<ToolProfile['category'] | 'all'>('all');
   const [showGapsOnly, setShowGapsOnly] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -263,6 +266,9 @@ export function TechnologySection({ toolProfiles = [], onUpdateProfiles }: Techn
             <AlertTriangle className="w-4 h-4" />
             Gaps Only
           </button>
+
+          {/* View mode toggle */}
+          <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
       )}
 
@@ -324,10 +330,24 @@ export function TechnologySection({ toolProfiles = [], onUpdateProfiles }: Techn
               Clear filters
             </button>
           </div>
-        ) : (
+        ) : viewMode === 'tile' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProfiles.map((profile) => (
               <ToolCard
+                key={profile.id}
+                profile={profile}
+                onClick={() => setSelectedTool(profile)}
+                onEdit={() => handleEditProfile(profile)}
+                onMerge={() => handleMergeProfile(profile)}
+                onDelete={() => confirmDelete(profile.id)}
+                canEdit={!!onUpdateProfiles}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filteredProfiles.map((profile) => (
+              <ToolListRow
                 key={profile.id}
                 profile={profile}
                 onClick={() => setSelectedTool(profile)}
