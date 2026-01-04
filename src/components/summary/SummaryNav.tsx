@@ -7,6 +7,7 @@ import {
   Wrench,
   GraduationCap,
   Lightbulb,
+  ClipboardList,
   FileSearch,
   Download,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ export type SectionId =
   | 'technology'
   | 'training'
   | 'recommendations'
+  | 'scope-of-work'
   | 'evidence'
   | 'exports';
 
@@ -38,6 +40,7 @@ const navItems: NavItem[] = [
   { id: 'technology', label: 'Technology & Systems', icon: Wrench },
   { id: 'training', label: 'Training Gaps', icon: GraduationCap },
   { id: 'recommendations', label: 'Recommendations', icon: Lightbulb },
+  { id: 'scope-of-work', label: 'Scope of Work', icon: ClipboardList },
   { id: 'evidence', label: 'Supporting Evidence', icon: FileSearch },
   { id: 'exports', label: 'Downloads & Exports', icon: Download },
 ];

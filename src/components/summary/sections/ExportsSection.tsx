@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Download, FileJson, FileText, Globe, Loader2, FileCheck } from 'lucide-react';
+import { Download, FileJson, FileText, Globe, Loader2, FileCheck, ClipboardList } from 'lucide-react';
 import { CompanySummary, Interview } from '../../../types/database';
-import { RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../../../types/analysis';
+import { RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
 import { generateCompanySummaryPDF, generateExecutiveSummaryPDF, downloadPDF } from '../../../services/pdfService';
 import { generateHTMLExport, downloadHTML } from '../../../services/htmlExportService';
+import { generateSOWHTML, downloadSOWHTML } from '../../../services/sowExportService';
 
 interface ExportsSectionProps {
   summary: CompanySummary;
@@ -13,12 +14,13 @@ interface ExportsSectionProps {
   toolProfiles?: ToolProfile[];
   trainingGapProfiles?: TrainingGapProfile[];
   recommendationProfiles?: RecommendationProfile[];
+  sowConfig?: SummarySOWConfig | null;
 }
 
 // Utility function for generating date-stamped filenames
 function generateExportFilename(
   title: string,
-  exportType: 'full' | 'executive' | 'html' | 'json',
+  exportType: 'full' | 'executive' | 'html' | 'json' | 'sow',
   extension: string
 ): string {
   const sanitizedTitle = title.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
@@ -29,6 +31,7 @@ function generateExportFilename(
     executive: 'Executive_Summary',
     html: 'Portal_Export',
     json: 'Data_Export',
+    sow: 'Scope_of_Work',
   };
 
   return `${sanitizedTitle}_${typeLabels[exportType]}_${date}.${extension}`;
@@ -42,11 +45,18 @@ export function ExportsSection({
   toolProfiles,
   trainingGapProfiles,
   recommendationProfiles,
+  sowConfig,
 }: ExportsSectionProps) {
   const [isExportingFullPDF, setIsExportingFullPDF] = useState(false);
   const [isExportingExecPDF, setIsExportingExecPDF] = useState(false);
   const [isExportingHTML, setIsExportingHTML] = useState(false);
+  const [isExportingSOW, setIsExportingSOW] = useState(false);
   const [lastExported, setLastExported] = useState<string | null>(null);
+
+  // Check if SOW export is available (has config and at least one configured recommendation)
+  const hasSOWData = sowConfig && recommendationProfiles?.some(
+    p => p.deliveryProfile && !p.deliveryProfile.excludeFromEstimate
+  );
 
   const handleExportFullPDF = async () => {
     setIsExportingFullPDF(true);
@@ -118,6 +128,27 @@ export function ExportsSection({
     a.click();
     URL.revokeObjectURL(url);
     setLastExported(filename);
+  };
+
+  const handleExportSOW = async () => {
+    if (!sowConfig || !recommendationProfiles) return;
+
+    setIsExportingSOW(true);
+    try {
+      const html = generateSOWHTML({
+        summary,
+        recommendationProfiles,
+        sowConfig,
+      });
+      const filename = generateExportFilename(summary.title, 'sow', 'html');
+      downloadSOWHTML(html, filename);
+      setLastExported(filename);
+    } catch (error) {
+      console.error('Error generating SOW:', error);
+      alert('Failed to generate Scope of Work. Please try again.');
+    } finally {
+      setIsExportingSOW(false);
+    }
   };
 
   return (
@@ -198,6 +229,52 @@ export function ExportsSection({
                     </>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scope of Work Section */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+          Scope of Work
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* SOW HTML Export */}
+          <div className={`bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow ${!hasSOWData ? 'opacity-60' : ''}`}>
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-indigo-100 rounded-lg">
+                <ClipboardList className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900">Scope of Work</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Professional scope of work document with line items, hours, rates, and totals. Ready for client proposals.
+                </p>
+                {hasSOWData ? (
+                  <button
+                    onClick={handleExportSOW}
+                    disabled={isExportingSOW}
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExportingSOW ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download SOW
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-500 italic">
+                    Configure delivery profiles in the Scope of Work section to enable export.
+                  </p>
+                )}
               </div>
             </div>
           </div>

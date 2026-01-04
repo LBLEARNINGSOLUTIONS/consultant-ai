@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft, FileText, TrendingUp, AlertTriangle, Wrench } from 'lucide-react';
-import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile } from '../../types/analysis';
+import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile, SummarySOWConfig } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
 import { formatDate } from '../../utils/dateFormatters';
 import { useToast } from '../../contexts/ToastContext';
@@ -15,6 +15,7 @@ import { RisksSection } from './sections/RisksSection';
 import { TechnologySection } from './sections/TechnologySection';
 import { TrainingGapsSection } from './sections/TrainingGapsSection';
 import { RecommendationsSection } from './sections/RecommendationsSection';
+import { SOWBuilderSection } from './sections/SOWBuilderSection';
 import { EvidenceSection } from './sections/EvidenceSection';
 import { ExportsSection } from './sections/ExportsSection';
 import { EditableTitle } from './EditableTitle';
@@ -112,6 +113,9 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
   const [customRecommendationProfiles, setCustomRecommendationProfiles] = useState<RecommendationProfile[] | null>(
     savedRecommendationProfiles || null
   );
+
+  // SOW configuration
+  const [sowConfig, setSowConfig] = useState<SummarySOWConfig | null>(data.sowConfig || null);
 
   // Merge base profiles with customizations
   const roleProfiles = useMemo(() => {
@@ -318,6 +322,11 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     if (!result.error) setCustomRecommendationProfiles(newProfiles);
   };
 
+  const handleUpdateSOWConfig = async (newConfig: SummarySOWConfig) => {
+    const result = await saveData({ sowConfig: newConfig } as unknown as Partial<CompanySummaryData>);
+    if (!result.error) setSowConfig(newConfig);
+  };
+
   // Render active section
   const renderSection = () => {
     switch (activeSection) {
@@ -394,6 +403,17 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
           <RecommendationsSection
             recommendationProfiles={recommendationProfiles}
             onUpdateProfiles={onUpdate ? handleUpdateRecommendationProfiles : undefined}
+            defaultHourlyRate={sowConfig?.defaultHourlyRate}
+          />
+        );
+
+      case 'scope-of-work':
+        return (
+          <SOWBuilderSection
+            recommendationProfiles={recommendationProfiles}
+            sowConfig={sowConfig}
+            onUpdateProfiles={onUpdate ? handleUpdateRecommendationProfiles : undefined}
+            onUpdateSOWConfig={onUpdate ? handleUpdateSOWConfig : undefined}
           />
         );
 
@@ -415,6 +435,7 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
             toolProfiles={toolProfiles}
             trainingGapProfiles={trainingGapProfiles}
             recommendationProfiles={recommendationProfiles}
+            sowConfig={sowConfig}
           />
         );
 

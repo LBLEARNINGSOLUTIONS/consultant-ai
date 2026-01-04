@@ -10,6 +10,9 @@ export type Json =
   | Json[];
 
 export interface Database {
+  __InternalSupabase: {
+    PostgrestVersion: '12';
+  };
   public: {
     Tables: {
       profiles: {
@@ -32,6 +35,7 @@ export interface Database {
           name?: string;
           role?: string;
         };
+        Relationships: [];
       };
       companies: {
         Row: {
@@ -54,6 +58,14 @@ export interface Database {
           description?: string | null;
           color?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: 'companies_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
       };
       interviews: {
         Row: {
@@ -74,7 +86,6 @@ export interface Database {
           analyzed_at: string | null;
           created_at: string;
           updated_at: string;
-          // Interview metadata
           interview_date: string | null;
           interviewee_name: string | null;
           interviewee_role: string | null;
@@ -95,7 +106,6 @@ export interface Database {
           raw_analysis_response?: Json;
           error_message?: string;
           analyzed_at?: string;
-          // Interview metadata (optional)
           interview_date?: string | null;
           interviewee_name?: string | null;
           interviewee_role?: string | null;
@@ -115,12 +125,25 @@ export interface Database {
           raw_analysis_response?: Json;
           error_message?: string;
           analyzed_at?: string;
-          // Interview metadata (optional)
           interview_date?: string | null;
           interviewee_name?: string | null;
           interviewee_role?: string | null;
           department?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: 'interviews_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'interviews_company_id_fkey';
+            columns: ['company_id'];
+            referencedRelation: 'companies';
+            referencedColumns: ['id'];
+          }
+        ];
       };
       company_summaries: {
         Row: {
@@ -143,6 +166,14 @@ export interface Database {
           interview_ids?: string[];
           summary_data?: Json;
         };
+        Relationships: [
+          {
+            foreignKeyName: 'company_summaries_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
       };
       transcript_files: {
         Row: {
@@ -172,8 +203,26 @@ export interface Database {
           upload_status?: 'pending' | 'uploading' | 'completed' | 'failed';
           error_message?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: 'transcript_files_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'transcript_files_interview_id_fkey';
+            columns: ['interview_id'];
+            referencedRelation: 'interviews';
+            referencedColumns: ['id'];
+          }
+        ];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
 

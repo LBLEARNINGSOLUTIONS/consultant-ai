@@ -200,6 +200,112 @@ export interface TrainingGapProfile {
   interviewIds: string[];
 }
 
+// ============================================
+// DELIVERY PROFILE TYPES (Scope of Work / Estimation)
+// ============================================
+
+// Work type classification for deliverables
+export type DeliveryWorkType =
+  | 'workflow-mapping'
+  | 'sop-creation'
+  | 'role-clarity-raci'
+  | 'system-configuration'
+  | 'automation-build'
+  | 'training-development'
+  | 'training-delivery'
+  | 'assessment-audit'
+  | 'change-management'
+  | 'other';
+
+// Primary domain for classification
+export type DeliveryDomain =
+  | 'role-responsibility'
+  | 'workflow-process'
+  | 'technology-systems'
+  | 'risk-bottlenecks'
+  | 'training-adoption';
+
+// Deliverable types for the bundle
+export type DeliverableType =
+  | 'sop-document'
+  | 'checklist'
+  | 'template'
+  | 'process-map'
+  | 'training-micro'
+  | 'training-session'
+  | 'dashboard-report'
+  | 'raci-matrix'
+  | 'job-aid'
+  | 'other';
+
+// Work mode
+export type DeliveryWorkMode = 'document-only' | 'configure-existing' | 'build-new' | 'hybrid';
+
+// Delivery profile (embedded in RecommendationProfile)
+export interface DeliveryProfile {
+  workType: DeliveryWorkType;
+  primaryDomain: DeliveryDomain;
+  deliverables: DeliverableType[];
+  estimatedHours: number;
+  workMode: DeliveryWorkMode;
+  hourlyRateOverride?: number;      // If different from summary default
+  excludeFromEstimate: boolean;
+  outcomeStatement?: string;
+  behaviorChangeBefore?: string;
+  behaviorChangeAfter?: string;
+}
+
+// Summary-level SOW configuration
+export interface SummarySOWConfig {
+  defaultHourlyRate: number;
+  currency: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD';
+  clientName?: string;
+  projectName?: string;
+  validUntil?: string;              // ISO date string
+  termsAndConditions?: string;
+  disclaimerText?: string;
+  sowDocument?: SOWDocument;        // Full SOW document state
+}
+
+// ============================================
+// SOW BUILDER TYPES
+// ============================================
+
+// Phase configuration for implementation plan
+export interface SOWPhase {
+  id: string;
+  name: string;                     // e.g., "Phase 1: Foundation"
+  description: string;              // Editable description
+  recommendationIds: string[];      // Which recommendations are in this phase
+  order: number;                    // Sort order
+}
+
+// Package tier for pricing options
+export interface SOWPackage {
+  id: string;
+  name: string;                     // e.g., "Essential", "Standard", "Premium"
+  description: string;              // Editable description
+  recommendationIds: string[];      // Which recommendations are in this package
+  discountPercent?: number;         // Optional discount for this tier
+  order: number;                    // Sort order
+}
+
+// Complete SOW Document structure
+export interface SOWDocument {
+  id: string;
+  executiveSummary: string;         // Editable rich text
+  objective: string;                // Editable rich text
+  phases: SOWPhase[];               // Customizable phases
+  packages: SOWPackage[];           // Multiple pricing tiers
+  selectedRecommendationIds: string[];  // All selected recommendations
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// RECOMMENDATION PROFILE
+// ============================================
+
 // Recommendation Profile for detailed roadmap view
 export interface RecommendationProfile {
   id: string;
@@ -233,6 +339,9 @@ export interface RecommendationProfile {
   sourceDescription?: string;       // e.g., "Derived from pain point: Manual data entry"
   count: number;                    // Interview mention count (for auto-generated)
   interviewIds: string[];           // Traceability
+
+  // Delivery profile for SOW/estimation (optional)
+  deliveryProfile?: DeliveryProfile;
 }
 
 // Role Profile for detailed role view
@@ -317,6 +426,9 @@ export interface CompanySummaryData {
     maturityLevel?: 1 | 2 | 3 | 4 | 5; // Readiness/maturity scale
     maturityNotes?: string; // Notes about the maturity assessment
   };
+
+  // Scope of Work configuration
+  sowConfig?: SummarySOWConfig;
 }
 
 // Claude API response structure

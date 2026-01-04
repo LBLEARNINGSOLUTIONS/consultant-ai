@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 interface RecommendationsSectionProps {
   recommendationProfiles?: RecommendationProfile[];
   onUpdateProfiles?: (profiles: RecommendationProfile[]) => Promise<void>;
+  defaultHourlyRate?: number;
 }
 
 const categoryLabels: Record<RecommendationProfile['category'], string> = {
@@ -48,7 +49,7 @@ const phaseIcons: Record<RecommendationProfile['phase'], typeof Zap> = {
 const categories: RecommendationProfile['category'][] = ['process', 'training', 'technology', 'organization', 'risk-mitigation'];
 const phases: RecommendationProfile['phase'][] = ['immediate', 'short-term', 'long-term'];
 
-export function RecommendationsSection({ recommendationProfiles = [], onUpdateProfiles }: RecommendationsSectionProps) {
+export function RecommendationsSection({ recommendationProfiles = [], onUpdateProfiles, defaultHourlyRate = 150 }: RecommendationsSectionProps) {
   const [selectedRec, setSelectedRec] = useState<RecommendationProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<RecommendationProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -474,6 +475,7 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
           profile={editingProfile}
           onSave={handleSaveEdit}
           onClose={() => setEditingProfile(null)}
+          defaultHourlyRate={defaultHourlyRate}
         />
       )}
     </div>
