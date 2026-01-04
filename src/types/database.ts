@@ -123,8 +123,8 @@ export interface Database {
           training_gaps?: Json;
           handoff_risks?: Json;
           raw_analysis_response?: Json;
-          error_message?: string;
-          analyzed_at?: string;
+          error_message?: string | null;
+          analyzed_at?: string | null;
           interview_date?: string | null;
           interviewee_name?: string | null;
           interviewee_role?: string | null;

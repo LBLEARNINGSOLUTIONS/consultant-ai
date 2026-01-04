@@ -24,7 +24,7 @@ export function useCompanySummary(userId?: string) {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setSummaries(data || []);
+      setSummaries((data || []) as CompanySummary[]);
     } catch (err) {
       console.error('Error fetching summaries:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch summaries');
@@ -72,7 +72,7 @@ export function useCompanySummary(userId?: string) {
       if (insertError) throw insertError;
 
       await fetchSummaries();
-      return { data, error: null };
+      return { data: data as CompanySummary, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create summary';
       setError(errorMessage);

@@ -35,7 +35,7 @@ export function useInterviewFilters({
     const toolSet = new Set<string>();
     interviews.forEach((interview) => {
       if (Array.isArray(interview.tools)) {
-        (interview.tools as Tool[]).forEach((tool) => {
+        (interview.tools as unknown as Tool[]).forEach((tool) => {
           if (tool.name) toolSet.add(tool.name);
         });
       }
@@ -87,7 +87,7 @@ export function useInterviewFilters({
     if (filters.severities.length > 0) {
       result = result.filter((i) => {
         if (!Array.isArray(i.pain_points)) return false;
-        const painPoints = i.pain_points as PainPoint[];
+        const painPoints = i.pain_points as unknown as PainPoint[];
         return painPoints.some((pp) => filters.severities.includes(pp.severity as PainPointSeverity));
       });
     }
@@ -96,7 +96,7 @@ export function useInterviewFilters({
     if (filters.tools.length > 0) {
       result = result.filter((i) => {
         if (!Array.isArray(i.tools)) return false;
-        const interviewTools = i.tools as Tool[];
+        const interviewTools = i.tools as unknown as Tool[];
         return filters.tools.some((filterTool) =>
           interviewTools.some((t) => t.name.toLowerCase() === filterTool.toLowerCase())
         );

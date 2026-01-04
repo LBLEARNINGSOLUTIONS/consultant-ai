@@ -22,7 +22,7 @@ export function useCompanies(userId?: string) {
         .order('name', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setCompanies(data || []);
+      setCompanies((data || []) as Company[]);
     } catch (err) {
       console.error('Error fetching companies:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch companies');
@@ -70,7 +70,7 @@ export function useCompanies(userId?: string) {
       if (insertError) throw insertError;
 
       await fetchCompanies();
-      return { data, error: null };
+      return { data: data as Company, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create company';
       setError(errorMessage);

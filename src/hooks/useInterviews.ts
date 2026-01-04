@@ -24,7 +24,7 @@ export function useInterviews(userId?: string) {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setInterviews(data || []);
+      setInterviews((data || []) as Interview[]);
     } catch (err) {
       console.error('Error fetching interviews:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch interviews');
@@ -72,7 +72,7 @@ export function useInterviews(userId?: string) {
       if (insertError) throw insertError;
 
       await fetchInterviews();
-      return { data, error: null };
+      return { data: data as Interview, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create interview';
       setError(errorMessage);
@@ -223,7 +223,7 @@ export function useInterviews(userId?: string) {
       if (insertError) throw insertError;
 
       await fetchInterviews();
-      return { data, error: null };
+      return { data: data as Interview, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to merge interviews';
       setError(errorMessage);
