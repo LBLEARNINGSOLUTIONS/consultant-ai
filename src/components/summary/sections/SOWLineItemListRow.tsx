@@ -1,5 +1,7 @@
+import { memo } from 'react';
 import { Pencil, Package } from 'lucide-react';
 import { RecommendationProfile, DeliveryWorkType, DeliverableType } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWLineItemListRowProps {
   profile: RecommendationProfile;
@@ -35,18 +37,7 @@ const deliverableLabels: Record<DeliverableType, string> = {
   'other': 'Other',
 };
 
-function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    CAD: 'C$',
-    AUD: 'A$',
-  };
-  return `${symbols[currency] || '$'}${amount.toLocaleString()}`;
-}
-
-export function SOWLineItemListRow({ profile, defaultHourlyRate, currency, onClick, onEdit }: SOWLineItemListRowProps) {
+export const SOWLineItemListRow = memo(function SOWLineItemListRow({ profile, defaultHourlyRate, currency, onClick, onEdit }: SOWLineItemListRowProps) {
   const delivery = profile.deliveryProfile;
 
   if (!delivery || delivery.excludeFromEstimate) {
@@ -113,4 +104,4 @@ export function SOWLineItemListRow({ profile, defaultHourlyRate, currency, onCli
       )}
     </div>
   );
-}
+});

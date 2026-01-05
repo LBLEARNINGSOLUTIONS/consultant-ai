@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Download, FileJson, FileText, Globe, Loader2, FileCheck, ClipboardList } from 'lucide-react';
 import { CompanySummary, Interview } from '../../../types/database';
 import { RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
-import { generateCompanySummaryPDF, generateExecutiveSummaryPDF, downloadPDF } from '../../../services/pdfService';
 import { generateHTMLExport, downloadHTML } from '../../../services/htmlExportService';
 import { generateSOWHTML, downloadSOWHTML } from '../../../services/sowExportService';
 
@@ -61,6 +60,8 @@ export function ExportsSection({
   const handleExportFullPDF = async () => {
     setIsExportingFullPDF(true);
     try {
+      // Lazy load PDF service only when needed
+      const { generateCompanySummaryPDF, downloadPDF } = await import('../../../services/pdfService');
       const blob = await generateCompanySummaryPDF(summary);
       const filename = generateExportFilename(summary.title, 'full', 'pdf');
       downloadPDF(blob, filename);
@@ -76,6 +77,8 @@ export function ExportsSection({
   const handleExportExecutivePDF = async () => {
     setIsExportingExecPDF(true);
     try {
+      // Lazy load PDF service only when needed
+      const { generateExecutiveSummaryPDF, downloadPDF } = await import('../../../services/pdfService');
       const blob = await generateExecutiveSummaryPDF(summary);
       const filename = generateExportFilename(summary.title, 'executive', 'pdf');
       downloadPDF(blob, filename);

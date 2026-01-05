@@ -1,5 +1,7 @@
+import { memo } from 'react';
 import { Pencil, DollarSign, Clock, Package } from 'lucide-react';
 import { RecommendationProfile, DeliveryWorkType, DeliveryDomain, DeliverableType } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWLineItemCardProps {
   profile: RecommendationProfile;
@@ -51,18 +53,7 @@ const domainColors: Record<DeliveryDomain, string> = {
   'training-adoption': 'bg-green-100 text-green-700',
 };
 
-function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    CAD: 'C$',
-    AUD: 'A$',
-  };
-  return `${symbols[currency] || '$'}${amount.toLocaleString()}`;
-}
-
-export function SOWLineItemCard({ profile, defaultHourlyRate, currency, onClick, onEdit }: SOWLineItemCardProps) {
+export const SOWLineItemCard = memo(function SOWLineItemCard({ profile, defaultHourlyRate, currency, onClick, onEdit }: SOWLineItemCardProps) {
   const delivery = profile.deliveryProfile;
 
   if (!delivery || delivery.excludeFromEstimate) {
@@ -136,4 +127,4 @@ export function SOWLineItemCard({ profile, defaultHourlyRate, currency, onClick,
       </div>
     </div>
   );
-}
+});

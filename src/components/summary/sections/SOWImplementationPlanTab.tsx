@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Edit2, Check, X, Calendar } from 'lucide-react';
 import { SOWPhase, RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWImplementationPlanTabProps {
   phases: SOWPhase[];
@@ -40,17 +41,6 @@ export function SOWImplementationPlanTab({
   const [editingPhaseId, setEditingPhaseId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[sowConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
 
   const initializeDefaultPhases = () => {
     const newPhases = defaultPhases.map((phase, index) => ({
@@ -301,7 +291,7 @@ export function SOWImplementationPlanTab({
                       <span>{phaseProfiles.length} items</span>
                       <span>{totals.hours} hrs</span>
                       <span className="font-medium text-indigo-600">
-                        {formatCurrency(totals.cost)}
+                        {formatCurrency(totals.cost, sowConfig.currency)}
                       </span>
                     </div>
 
@@ -366,7 +356,7 @@ export function SOWImplementationPlanTab({
                               </span>
                             </div>
                             <span className="text-xs text-slate-500">
-                              {hours} hrs • {formatCurrency(hours * rate)}
+                              {hours} hrs • {formatCurrency(hours * rate, sowConfig.currency)}
                             </span>
                           </div>
                         );

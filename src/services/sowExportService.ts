@@ -1,5 +1,6 @@
 import { CompanySummary } from '../types/database';
 import { RecommendationProfile, SummarySOWConfig, DeliveryWorkType, DeliveryDomain, DeliverableType, SOWDocument, SOWPhase, SOWPackage } from '../types/analysis';
+import { formatCurrency } from '../utils/formatters';
 
 const workTypeLabels: Record<DeliveryWorkType, string> = {
   'workflow-mapping': 'Workflow Mapping',
@@ -34,17 +35,6 @@ const deliverableLabels: Record<DeliverableType, string> = {
   'job-aid': 'Job Aid',
   'other': 'Other',
 };
-
-function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    CAD: 'C$',
-    AUD: 'A$',
-  };
-  return `${symbols[currency] || '$'}${amount.toLocaleString()}`;
-}
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);

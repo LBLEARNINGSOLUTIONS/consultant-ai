@@ -4,6 +4,7 @@ import { InterviewFilters, AnalysisStatus, PainPointSeverity } from '../../types
 import { FilterDropdown } from './FilterDropdown';
 import { DateRangePicker } from './DateRangePicker';
 import { ActiveFilters } from './ActiveFilters';
+import { useDebouncedCallback } from '../../hooks/useDebouncedCallback';
 
 interface InterviewSearchBarProps {
   filters: InterviewFilters;
@@ -49,7 +50,28 @@ export function InterviewSearchBar({
   totalCount,
 }: InterviewSearchBarProps) {
   const [showFilters, setShowFilters] = useState(false);
+  const [localSearch, setLocalSearch] = useState(filters.searchQuery);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search to avoid excessive filtering
+  const debouncedSearch = useDebouncedCallback(onSearchChange, 300);
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value);
+    debouncedSearch(value);
+  };
+
+  // Handle clearing search (immediate, not debounced)
+  const handleClearSearch = () => {
+    setLocalSearch('');
+    onSearchChange('');
+  };
+
+  // Sync local state when filters.searchQuery changes externally (e.g., clear all)
+  useEffect(() => {
+    setLocalSearch(filters.searchQuery);
+  }, [filters.searchQuery]);
 
   // Keyboard shortcut: Cmd/Ctrl + K to focus search
   useEffect(() => {
@@ -75,14 +97,14 @@ export function InterviewSearchBar({
           <input
             ref={searchInputRef}
             type="text"
-            value={filters.searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={localSearch}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search interviews by title or content... (Cmd+K)"
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
-          {filters.searchQuery && (
+          {localSearch && (
             <button
-              onClick={() => onSearchChange('')}
+              onClick={handleClearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
             >
               <X className="w-4 h-4" />

@@ -532,3 +532,5 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
     </div>
   );
 }
+
+export default CompanySummaryView;

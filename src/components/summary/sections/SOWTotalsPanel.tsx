@@ -1,21 +1,11 @@
 import { Clock, DollarSign, Package, FileText } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWTotalsPanelProps {
   profiles: RecommendationProfile[];
   sowConfig: SummarySOWConfig;
   onExport?: () => void;
-}
-
-function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    CAD: 'C$',
-    AUD: 'A$',
-  };
-  return `${symbols[currency] || '$'}${amount.toLocaleString()}`;
 }
 
 export function SOWTotalsPanel({ profiles, sowConfig, onExport }: SOWTotalsPanelProps) {

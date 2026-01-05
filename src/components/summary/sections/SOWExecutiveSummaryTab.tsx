@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWExecutiveSummaryTabProps {
   value: string;
@@ -31,17 +32,6 @@ export function SOWExecutiveSummaryTab({
     { hours: 0, cost: 0 }
   );
 
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[sowConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
-
   const generateDraft = () => {
     setIsGenerating(true);
 
@@ -60,7 +50,7 @@ export function SOWExecutiveSummaryTab({
       .map(([cat]) => cat.replace('-', ' '))
       .slice(0, 3);
 
-    const draft = `This Scope of Work outlines a comprehensive engagement consisting of ${selectedProfiles.length} key initiatives across ${categoryList.join(', ')} areas. The proposed work represents ${totals.hours} hours of professional services with an estimated investment of ${formatCurrency(totals.cost)}.
+    const draft = `This Scope of Work outlines a comprehensive engagement consisting of ${selectedProfiles.length} key initiatives across ${categoryList.join(', ')} areas. The proposed work represents ${totals.hours} hours of professional services with an estimated investment of ${formatCurrency(totals.cost, sowConfig.currency)}.
 
 ${highPriority.length > 0 ? `The engagement prioritizes ${highPriority.length} high-impact items that address critical operational needs, including ${highPriority.slice(0, 2).map(p => p.title.toLowerCase()).join(' and ')}.` : ''}
 
@@ -119,7 +109,7 @@ This proposal is structured to deliver measurable outcomes while providing flexi
               <div className="text-xs text-slate-500">Hours</div>
             </div>
             <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-indigo-600">{formatCurrency(totals.cost)}</div>
+              <div className="text-2xl font-bold text-indigo-600">{formatCurrency(totals.cost, sowConfig.currency)}</div>
               <div className="text-xs text-slate-500">Total</div>
             </div>
           </div>

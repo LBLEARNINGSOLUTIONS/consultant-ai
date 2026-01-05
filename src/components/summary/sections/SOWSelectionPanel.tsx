@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, CheckSquare, Square } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWSelectionPanelProps {
   recommendationProfiles: RecommendationProfile[];
@@ -61,17 +62,6 @@ export function SOWSelectionPanel({
 
     return { count: selected.length, totalHours, totalCost };
   }, [recommendationProfiles, selectedIds, sowConfig.defaultHourlyRate]);
-
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[sowConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
 
   const toggleSelection = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -213,7 +203,7 @@ export function SOWSelectionPanel({
                       <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                         <span>{hours} hrs</span>
                         <span>•</span>
-                        <span>{formatCurrency(cost)}</span>
+                        <span>{formatCurrency(cost, sowConfig.currency)}</span>
                       </div>
                     ) : (
                       <p className="text-xs text-slate-400 mt-1">Not configured</p>
@@ -238,7 +228,7 @@ export function SOWSelectionPanel({
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-slate-600">Estimated Total</span>
-          <span className="font-bold text-lg text-indigo-600">{formatCurrency(totals.totalCost)}</span>
+          <span className="font-bold text-lg text-indigo-600">{formatCurrency(totals.totalCost, sowConfig.currency)}</span>
         </div>
       </div>
     </div>

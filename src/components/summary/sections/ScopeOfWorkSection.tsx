@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ClipboardList, Settings, Search, Filter, Eye, EyeOff } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig, DeliveryWorkType, DeliveryDomain } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 import { SOWLineItemCard } from './SOWLineItemCard';
 import { SOWLineItemListRow } from './SOWLineItemListRow';
 import { SOWTotalsPanel } from './SOWTotalsPanel';
@@ -166,17 +167,6 @@ export function ScopeOfWorkSection({
     setEditingProfile(null);
   };
 
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[effectiveConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
-
   const canEdit = !!onUpdateProfiles;
 
   return (
@@ -189,7 +179,7 @@ export function ScopeOfWorkSection({
             Scope of Work
           </h2>
           <p className="text-slate-600">
-            {stats.included} item{stats.included !== 1 ? 's' : ''} • {stats.totalHours} hours • {formatCurrency(stats.totalCost)} estimated
+            {stats.included} item{stats.included !== 1 ? 's' : ''} • {stats.totalHours} hours • {formatCurrency(stats.totalCost, effectiveConfig.currency)} estimated
           </p>
         </div>
         {onUpdateSOWConfig && (

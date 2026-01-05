@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ClipboardList, Settings, Download, FileText } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig, SOWDocument } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 import { SOWSelectionPanel } from './SOWSelectionPanel';
 import { SOWDocumentEditor } from './SOWDocumentEditor';
 import { SOWGenerateModal } from './SOWGenerateModal';
@@ -70,17 +71,6 @@ export function SOWBuilderSection({
     );
   }, [selectedProfiles, effectiveConfig.defaultHourlyRate]);
 
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[effectiveConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
-
   // Save document changes to config
   const handleDocumentChange = async (newDocument: SOWDocument) => {
     setDocument(newDocument);
@@ -125,7 +115,7 @@ export function SOWBuilderSection({
           </h2>
           <p className="text-slate-600">
             {selectedProfiles.length} of {configurableCount} items selected •
-            {' '}{totals.hours} hours • {formatCurrency(totals.cost)} estimated
+            {' '}{totals.hours} hours • {formatCurrency(totals.cost, effectiveConfig.currency)} estimated
             {isSaving && <span className="text-indigo-600 ml-2">Saving...</span>}
           </p>
         </div>

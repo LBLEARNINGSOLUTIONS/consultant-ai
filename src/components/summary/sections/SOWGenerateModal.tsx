@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Download, FileText, Globe, Loader2 } from 'lucide-react';
 import { SOWDocument, RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 import { generateEnhancedSOWHTML, downloadSOWHTML } from '../../../services/sowExportService';
 
 interface SOWGenerateModalProps {
@@ -41,17 +42,6 @@ export function SOWGenerateModal({
     },
     { hours: 0, cost: 0 }
   );
-
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[sowConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -132,7 +122,7 @@ export function SOWGenerateModal({
               </div>
               <div className="flex justify-between col-span-2">
                 <span className="text-slate-500">Estimated Total</span>
-                <span className="font-bold text-indigo-600">{formatCurrency(totals.cost)}</span>
+                <span className="font-bold text-indigo-600">{formatCurrency(totals.cost, sowConfig.currency)}</span>
               </div>
             </div>
           </div>

@@ -94,3 +94,5 @@ export function AnalyticsDashboard({ interviews, loading }: AnalyticsDashboardPr
     </div>
   );
 }
+
+export default AnalyticsDashboard;

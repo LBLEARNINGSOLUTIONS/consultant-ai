@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Edit2, Check, X, Package, ChevronDown, ChevronUp, Percent } from 'lucide-react';
 import { SOWPackage, RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface SOWPackageOptionsTabProps {
   packages: SOWPackage[];
@@ -41,17 +42,6 @@ export function SOWPackageOptionsTab({
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDiscount, setEditDiscount] = useState<number | undefined>(undefined);
-
-  const formatCurrency = (amount: number): string => {
-    const symbols: Record<string, string> = {
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      CAD: 'C$',
-      AUD: 'A$',
-    };
-    return `${symbols[sowConfig.currency] || '$'}${amount.toLocaleString()}`;
-  };
 
   const initializeDefaultPackages = () => {
     const highPriority = selectedProfiles.filter(p => p.priority === 'high');
@@ -238,11 +228,11 @@ export function SOWPackageOptionsTab({
               <div className="mt-3">
                 {totals.discount > 0 && (
                   <div className="text-sm text-slate-400 line-through">
-                    {formatCurrency(totals.cost)}
+                    {formatCurrency(totals.cost, sowConfig.currency)}
                   </div>
                 )}
                 <div className="text-2xl font-bold text-indigo-600">
-                  {formatCurrency(totals.discountedCost)}
+                  {formatCurrency(totals.discountedCost, sowConfig.currency)}
                 </div>
                 {totals.discount > 0 && (
                   <div className="text-xs text-green-600 font-medium">
@@ -332,7 +322,7 @@ export function SOWPackageOptionsTab({
                       <span>{pkgProfiles.length} items</span>
                       <span>{totals.hours} hrs</span>
                       <span className="font-medium text-indigo-600">
-                        {formatCurrency(totals.discountedCost)}
+                        {formatCurrency(totals.discountedCost, sowConfig.currency)}
                         {totals.discount > 0 && (
                           <span className="text-xs text-green-600 ml-1">
                             (-{totals.discount}%)
@@ -402,7 +392,7 @@ export function SOWPackageOptionsTab({
                               </span>
                             </div>
                             <span className="text-xs text-slate-500">
-                              {hours} hrs • {formatCurrency(hours * rate)}
+                              {hours} hrs • {formatCurrency(hours * rate, sowConfig.currency)}
                             </span>
                           </div>
                         );

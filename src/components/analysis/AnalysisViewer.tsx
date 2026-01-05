@@ -13,7 +13,6 @@ import { PainPointsTab } from './PainPointsTab';
 import { ToolsAndRolesTab } from './ToolsAndRolesTab';
 import { X, FileText, Download } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatters';
-import { generateInterviewPDF, downloadPDF } from '../../services/pdfService';
 
 interface AnalysisViewerProps {
   interview: Interview;
@@ -59,6 +58,8 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
   const handleExportPDF = async () => {
     setIsExportingPDF(true);
     try {
+      // Lazy load PDF service only when needed
+      const { generateInterviewPDF, downloadPDF } = await import('../../services/pdfService');
       const blob = await generateInterviewPDF(interview);
       const filename = `${interview.title.replace(/\s+/g, '_')}_analysis.pdf`;
       downloadPDF(blob, filename);
@@ -197,3 +198,5 @@ export function AnalysisViewer({ interview, onClose, onUpdate }: AnalysisViewerP
     </div>
   );
 }
+
+export default AnalysisViewer;
