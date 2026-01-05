@@ -14,7 +14,6 @@ import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
 import { FileText, LogOut, Plus, BarChart3, PieChart, Merge } from 'lucide-react';
-import { InterviewCard } from './components/interviews/InterviewCard';
 import { VirtualizedInterviewGrid } from './components/interviews/VirtualizedInterviewGrid';
 import { SummaryCard } from './components/summaries/SummaryCard';
 import { SummaryStatsModal } from './components/summary/SummaryStatsModal';
