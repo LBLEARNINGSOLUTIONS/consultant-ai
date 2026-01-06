@@ -127,9 +127,12 @@ function App() {
     for (const result of results) {
       if (result.error || !result.text) {
         console.error(`Failed to upload ${result.filename}:`, result.error);
+        addToast(`Upload failed: ${result.error || 'No text extracted'}`, 'error');
         failCount++;
         continue;
       }
+
+      console.log(`Creating interview for: ${result.filename}, text length: ${result.text.length}`);
 
       // Create interview in database with metadata
       const { data: interview, error: createError } = await createInterview({
@@ -160,6 +163,7 @@ function App() {
         }
       } else if (createError) {
         console.error('Failed to create interview:', createError);
+        addToast(`Database error: ${createError}`, 'error');
         failCount++;
       }
     }

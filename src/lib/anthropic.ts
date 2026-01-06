@@ -16,7 +16,7 @@ export const anthropic = new Anthropic({
 
 // Export model configurations
 export const CLAUDE_MODELS = {
-  SONNET: 'claude-sonnet-4-5-20250929',
+  SONNET: 'claude-sonnet-4-20250514',
   OPUS: 'claude-3-opus-20240229',
   HAIKU: 'claude-3-5-haiku-20241022'
 } as const;
