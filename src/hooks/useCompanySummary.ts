@@ -1,42 +1,42 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { queryKeys } from '../lib/queryKeys';
 import { CompanySummary, InsertCompanySummary, Interview, Json } from '../types/database';
 import { generateCompanySummary } from '../services/analysisService';
 import { InterviewAnalysis } from '../types/analysis';
 
+// Fetch summaries from Supabase
+async function fetchSummaries(userId: string): Promise<CompanySummary[]> {
+  const { data, error } = await supabase
+    .from('company_summaries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as CompanySummary[];
+}
+
 export function useCompanySummary(userId?: string) {
-  const [summaries, setSummaries] = useState<CompanySummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchSummaries = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+  // Query for fetching summaries
+  const {
+    data: summaries = [],
+    isLoading: loading,
+    error: queryError,
+    refetch: refreshSummaries,
+  } = useQuery({
+    queryKey: queryKeys.summaries.list(userId || ''),
+    queryFn: () => fetchSummaries(userId!),
+    enabled: !!userId,
+  });
 
-    try {
-      setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('company_summaries')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+  const error = queryError instanceof Error ? queryError.message : null;
 
-      if (fetchError) throw fetchError;
-      setSummaries((data || []) as CompanySummary[]);
-    } catch (err) {
-      console.error('Error fetching summaries:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch summaries');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
+  // Set up real-time subscription
   useEffect(() => {
-    fetchSummaries();
-
-    // Set up real-time subscription
     if (!userId) return;
 
     const channel = supabase
@@ -49,8 +49,28 @@ export function useCompanySummary(userId?: string) {
           table: 'company_summaries',
           filter: `user_id=eq.${userId}`,
         },
-        () => {
-          fetchSummaries();
+        (payload) => {
+          // Handle real-time updates efficiently
+          queryClient.setQueryData<CompanySummary[]>(
+            queryKeys.summaries.list(userId),
+            (oldData) => {
+              if (!oldData) return oldData;
+
+              if (payload.eventType === 'DELETE') {
+                return oldData.filter(s => s.id !== payload.old.id);
+              }
+              if (payload.eventType === 'INSERT') {
+                const newSummary = payload.new as CompanySummary;
+                return [newSummary, ...oldData];
+              }
+              if (payload.eventType === 'UPDATE') {
+                return oldData.map(s =>
+                  s.id === payload.new.id ? payload.new as CompanySummary : s
+                );
+              }
+              return oldData;
+            }
+          );
         }
       )
       .subscribe();
@@ -58,67 +78,156 @@ export function useCompanySummary(userId?: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchSummaries, userId]);
+  }, [userId, queryClient]);
 
-  const createSummary = async (summary: InsertCompanySummary) => {
-    try {
-      setError(null);
-      const { data, error: insertError } = await supabase
+  // Create summary mutation
+  const createMutation = useMutation({
+    mutationFn: async (summary: InsertCompanySummary) => {
+      const { data, error } = await supabase
         .from('company_summaries')
         .insert(summary)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
+      return data as CompanySummary;
+    },
+    onMutate: async (newSummary) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.summaries.list(userId || '') });
 
-      await fetchSummaries();
-      return { data: data as CompanySummary, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create summary';
-      setError(errorMessage);
-      return { data: null, error: errorMessage };
-    }
-  };
+      const previousSummaries = queryClient.getQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || '')
+      );
 
-  const deleteSummary = async (id: string) => {
-    try {
-      setError(null);
-      const { error: deleteError } = await supabase
+      // Optimistically add summary
+      const optimisticSummary: CompanySummary = {
+        id: `temp-${Date.now()}`,
+        user_id: userId || '',
+        title: newSummary.title,
+        interview_ids: newSummary.interview_ids || [],
+        summary_data: newSummary.summary_data || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || ''),
+        (old) => old ? [optimisticSummary, ...old] : [optimisticSummary]
+      );
+
+      return { previousSummaries };
+    },
+    onError: (_err, _newSummary, context) => {
+      if (context?.previousSummaries) {
+        queryClient.setQueryData(
+          queryKeys.summaries.list(userId || ''),
+          context.previousSummaries
+        );
+      }
+    },
+  });
+
+  // Update summary mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { summary_data?: Json; title?: string } }) => {
+      const { error } = await supabase
+        .from('company_summaries')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.summaries.list(userId || '') });
+
+      const previousSummaries = queryClient.getQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || '')
+      );
+
+      queryClient.setQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || ''),
+        (old) => old?.map(s => s.id === id ? { ...s, ...updates } : s)
+      );
+
+      return { previousSummaries };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousSummaries) {
+        queryClient.setQueryData(
+          queryKeys.summaries.list(userId || ''),
+          context.previousSummaries
+        );
+      }
+    },
+  });
+
+  // Delete summary mutation with optimistic update
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
         .from('company_summaries')
         .delete()
         .eq('id', id);
 
-      if (deleteError) throw deleteError;
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.summaries.list(userId || '') });
 
-      await fetchSummaries();
-      return { error: null };
+      const previousSummaries = queryClient.getQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || '')
+      );
+
+      // Optimistically remove the summary
+      queryClient.setQueryData<CompanySummary[]>(
+        queryKeys.summaries.list(userId || ''),
+        (old) => old?.filter(s => s.id !== id)
+      );
+
+      return { previousSummaries };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousSummaries) {
+        queryClient.setQueryData(
+          queryKeys.summaries.list(userId || ''),
+          context.previousSummaries
+        );
+      }
+    },
+  });
+
+  // Wrapper functions to maintain API compatibility
+  const createSummary = async (summary: InsertCompanySummary) => {
+    try {
+      const data = await createMutation.mutateAsync(summary);
+      return { data, error: null };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete summary';
-      setError(errorMessage);
-      return { error: errorMessage };
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create summary';
+      return { data: null, error: errorMessage };
     }
   };
 
   const updateSummary = async (id: string, updates: { summary_data?: Json; title?: string }) => {
     try {
-      setError(null);
-      const { error: updateError } = await supabase
-        .from('company_summaries')
-        .update(updates)
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
-      await fetchSummaries();
+      await updateMutation.mutateAsync({ id, updates });
       return { error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update summary';
-      setError(errorMessage);
       return { error: errorMessage };
     }
   };
 
-  const generateSummary = async (
+  const deleteSummary = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      return { error: null };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete summary';
+      return { error: errorMessage };
+    }
+  };
+
+  const generateSummaryFromInterviews = async (
     title: string,
     selectedInterviews: Interview[]
   ) => {
@@ -127,17 +236,15 @@ export function useCompanySummary(userId?: string) {
     }
 
     try {
-      setError(null);
-
       // Convert interviews to analyses
       const analyses: InterviewAnalysis[] = selectedInterviews.map(interview => ({
-        workflows: (interview.workflows as any) || [],
-        painPoints: (interview.pain_points as any) || [],
-        tools: (interview.tools as any) || [],
-        roles: (interview.roles as any) || [],
-        trainingGaps: (interview.training_gaps as any) || [],
-        handoffRisks: (interview.handoff_risks as any) || [],
-        recommendations: (interview as any).recommendations || [],
+        workflows: (interview.workflows as unknown as InterviewAnalysis['workflows']) || [],
+        painPoints: (interview.pain_points as unknown as InterviewAnalysis['painPoints']) || [],
+        tools: (interview.tools as unknown as InterviewAnalysis['tools']) || [],
+        roles: (interview.roles as unknown as InterviewAnalysis['roles']) || [],
+        trainingGaps: (interview.training_gaps as unknown as InterviewAnalysis['trainingGaps']) || [],
+        handoffRisks: (interview.handoff_risks as unknown as InterviewAnalysis['handoffRisks']) || [],
+        recommendations: [],
       }));
 
       const dates = selectedInterviews.map(i => i.created_at);
@@ -150,7 +257,7 @@ export function useCompanySummary(userId?: string) {
         user_id: userId,
         title,
         interview_ids: selectedInterviews.map(i => i.id),
-        summary_data: summaryData as any,
+        summary_data: summaryData as unknown as Json,
       });
 
       if (saveError) throw new Error(saveError);
@@ -158,7 +265,6 @@ export function useCompanySummary(userId?: string) {
       return { data, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate summary';
-      setError(errorMessage);
       return { data: null, error: errorMessage };
     }
   };
@@ -170,7 +276,7 @@ export function useCompanySummary(userId?: string) {
     createSummary,
     updateSummary,
     deleteSummary,
-    generateSummary,
-    refreshSummaries: fetchSummaries,
+    generateSummary: generateSummaryFromInterviews,
+    refreshSummaries,
   };
 }

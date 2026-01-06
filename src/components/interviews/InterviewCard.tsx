@@ -45,10 +45,13 @@ function DraggableWrapper({ id, children }: { id: string; children: React.ReactN
       <div
         {...listeners}
         {...attributes}
+        role="button"
+        aria-label="Drag to move interview to a company folder"
+        tabIndex={0}
         className="absolute top-2 left-2 p-1 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded z-10"
         title="Drag to move to a company folder"
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical className="w-4 h-4" aria-hidden="true" />
       </div>
       {children}
     </div>
@@ -123,13 +126,16 @@ export const InterviewCard = memo(function InterviewCard({
             {canSelect && (
               <button
                 onClick={onToggleSelect}
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={isSelected ? 'Deselect interview for summary' : 'Select interview for summary'}
                 className="mt-0.5 text-slate-400 hover:text-green-600 transition-colors"
                 title={isSelected ? 'Deselect for summary' : 'Select for summary'}
               >
                 {isSelected ? (
-                  <CheckSquare className="w-5 h-5 text-green-600" />
+                  <CheckSquare className="w-5 h-5 text-green-600" aria-hidden="true" />
                 ) : (
-                  <Square className="w-5 h-5" />
+                  <Square className="w-5 h-5" aria-hidden="true" />
                 )}
               </button>
             )}
@@ -171,20 +177,22 @@ export const InterviewCard = memo(function InterviewCard({
                 </h3>
                 <button
                   onClick={handleStartRename}
+                  aria-label="Rename interview"
                   className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Rename interview"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             )}
           </div>
           <button
             onClick={onDelete}
+            aria-label="Delete interview"
             className="ml-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
             title="Delete interview"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 

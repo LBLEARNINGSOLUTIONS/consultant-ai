@@ -1,42 +1,42 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { queryKeys } from '../lib/queryKeys';
 import { Interview, InsertInterview, UpdateInterview } from '../types/database';
 import { analyzeTranscript } from '../services/analysisService';
 import { mergeAnalysisData } from '../utils/analysisHelpers';
 
+// Fetch interviews from Supabase
+async function fetchInterviews(userId: string): Promise<Interview[]> {
+  const { data, error } = await supabase
+    .from('interviews')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Interview[];
+}
+
 export function useInterviews(userId?: string) {
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchInterviews = useCallback(async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+  // Query for fetching interviews
+  const {
+    data: interviews = [],
+    isLoading: loading,
+    error: queryError,
+    refetch: refreshInterviews,
+  } = useQuery({
+    queryKey: queryKeys.interviews.list(userId || ''),
+    queryFn: () => fetchInterviews(userId!),
+    enabled: !!userId,
+  });
 
-    try {
-      setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('interviews')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+  const error = queryError instanceof Error ? queryError.message : null;
 
-      if (fetchError) throw fetchError;
-      setInterviews((data || []) as Interview[]);
-    } catch (err) {
-      console.error('Error fetching interviews:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch interviews');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
+  // Set up real-time subscription
   useEffect(() => {
-    fetchInterviews();
-
-    // Set up real-time subscription
     if (!userId) return;
 
     const channel = supabase
@@ -49,8 +49,28 @@ export function useInterviews(userId?: string) {
           table: 'interviews',
           filter: `user_id=eq.${userId}`,
         },
-        () => {
-          fetchInterviews();
+        (payload) => {
+          // Handle real-time updates efficiently
+          queryClient.setQueryData<Interview[]>(
+            queryKeys.interviews.list(userId),
+            (oldData) => {
+              if (!oldData) return oldData;
+
+              if (payload.eventType === 'DELETE') {
+                return oldData.filter(i => i.id !== payload.old.id);
+              }
+              if (payload.eventType === 'INSERT') {
+                const newInterview = payload.new as Interview;
+                return [newInterview, ...oldData];
+              }
+              if (payload.eventType === 'UPDATE') {
+                return oldData.map(i =>
+                  i.id === payload.new.id ? payload.new as Interview : i
+                );
+              }
+              return oldData;
+            }
+          );
         }
       )
       .subscribe();
@@ -58,90 +78,184 @@ export function useInterviews(userId?: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchInterviews, userId]);
+  }, [userId, queryClient]);
 
-  const createInterview = async (interview: InsertInterview) => {
-    try {
-      setError(null);
-      const { data, error: insertError } = await supabase
+  // Create interview mutation
+  const createMutation = useMutation({
+    mutationFn: async (interview: InsertInterview) => {
+      const { data, error } = await supabase
         .from('interviews')
         .insert(interview)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
+      return data as Interview;
+    },
+    onMutate: async (newInterview) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.interviews.list(userId || '') });
 
-      await fetchInterviews();
-      return { data: data as Interview, error: null };
+      const previousInterviews = queryClient.getQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || '')
+      );
+
+      // Optimistically add interview
+      const optimisticInterview: Interview = {
+        id: `temp-${Date.now()}`,
+        user_id: userId || '',
+        title: newInterview.title,
+        transcript_text: newInterview.transcript_text,
+        analysis_status: newInterview.analysis_status || 'pending',
+        company_id: newInterview.company_id || null,
+        interviewee_name: newInterview.interviewee_name || null,
+        interviewee_role: newInterview.interviewee_role || null,
+        department: newInterview.department || null,
+        interview_date: newInterview.interview_date || null,
+        workflows: null,
+        pain_points: null,
+        tools: null,
+        roles: null,
+        training_gaps: null,
+        handoff_risks: null,
+        raw_analysis_response: null,
+        analyzed_at: null,
+        error_message: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || ''),
+        (old) => old ? [optimisticInterview, ...old] : [optimisticInterview]
+      );
+
+      return { previousInterviews };
+    },
+    onError: (_err, _newInterview, context) => {
+      if (context?.previousInterviews) {
+        queryClient.setQueryData(
+          queryKeys.interviews.list(userId || ''),
+          context.previousInterviews
+        );
+      }
+    },
+  });
+
+  // Update interview mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: UpdateInterview }) => {
+      const { error } = await supabase
+        .from('interviews')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.interviews.list(userId || '') });
+
+      const previousInterviews = queryClient.getQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || '')
+      );
+
+      queryClient.setQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || ''),
+        (old) => old?.map(i => i.id === id ? { ...i, ...updates } : i)
+      );
+
+      return { previousInterviews };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousInterviews) {
+        queryClient.setQueryData(
+          queryKeys.interviews.list(userId || ''),
+          context.previousInterviews
+        );
+      }
+    },
+  });
+
+  // Delete interview mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('interviews')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.interviews.list(userId || '') });
+
+      const previousInterviews = queryClient.getQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || '')
+      );
+
+      queryClient.setQueryData<Interview[]>(
+        queryKeys.interviews.list(userId || ''),
+        (old) => old?.filter(i => i.id !== id)
+      );
+
+      return { previousInterviews };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousInterviews) {
+        queryClient.setQueryData(
+          queryKeys.interviews.list(userId || ''),
+          context.previousInterviews
+        );
+      }
+    },
+  });
+
+  // Wrapper functions to maintain API compatibility
+  const createInterview = async (interview: InsertInterview) => {
+    try {
+      const data = await createMutation.mutateAsync(interview);
+      return { data, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create interview';
-      setError(errorMessage);
       return { data: null, error: errorMessage };
     }
   };
 
   const updateInterview = async (id: string, updates: UpdateInterview) => {
     try {
-      setError(null);
-      const { error: updateError } = await supabase
-        .from('interviews')
-        .update(updates)
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
-      await fetchInterviews();
+      await updateMutation.mutateAsync({ id, updates });
       return { error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update interview';
-      setError(errorMessage);
       return { error: errorMessage };
     }
   };
 
   const deleteInterview = async (id: string) => {
     try {
-      setError(null);
-      const { error: deleteError } = await supabase
-        .from('interviews')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) throw deleteError;
-
-      await fetchInterviews();
+      await deleteMutation.mutateAsync(id);
       return { error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete interview';
-      setError(errorMessage);
       return { error: errorMessage };
     }
   };
 
   const assignToCompany = async (interviewId: string, companyId: string | null) => {
     try {
-      setError(null);
-      const { error: updateError } = await supabase
-        .from('interviews')
-        .update({ company_id: companyId })
-        .eq('id', interviewId);
-
-      if (updateError) throw updateError;
-
-      await fetchInterviews();
+      await updateMutation.mutateAsync({
+        id: interviewId,
+        updates: { company_id: companyId }
+      });
       return { error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to assign interview to company';
-      setError(errorMessage);
       return { error: errorMessage };
     }
   };
 
   const analyzeInterview = async (id: string, transcript: string) => {
     try {
-      setError(null);
-
-      // Set status to 'analyzing'
+      // Optimistically set status to 'analyzing'
       await updateInterview(id, { analysis_status: 'analyzing' });
 
       // Call Claude API
@@ -151,13 +265,13 @@ export function useInterviews(userId?: string) {
         // Save analysis results
         await updateInterview(id, {
           analysis_status: 'completed',
-          workflows: result.analysis.workflows as any,
-          pain_points: result.analysis.painPoints as any,
-          tools: result.analysis.tools as any,
-          roles: result.analysis.roles as any,
-          training_gaps: result.analysis.trainingGaps as any,
-          handoff_risks: result.analysis.handoffRisks as any,
-          raw_analysis_response: result as any,
+          workflows: result.analysis.workflows as unknown as Interview['workflows'],
+          pain_points: result.analysis.painPoints as unknown as Interview['pain_points'],
+          tools: result.analysis.tools as unknown as Interview['tools'],
+          roles: result.analysis.roles as unknown as Interview['roles'],
+          training_gaps: result.analysis.trainingGaps as unknown as Interview['training_gaps'],
+          handoff_risks: result.analysis.handoffRisks as unknown as Interview['handoff_risks'],
+          raw_analysis_response: result as unknown as Interview['raw_analysis_response'],
           analyzed_at: new Date().toISOString(),
         });
 
@@ -180,7 +294,6 @@ export function useInterviews(userId?: string) {
         error_message: errorMessage,
       });
 
-      setError(errorMessage);
       return { error: errorMessage };
     }
   };
@@ -191,8 +304,6 @@ export function useInterviews(userId?: string) {
     }
 
     try {
-      setError(null);
-
       // Combine transcripts with separators
       const combinedTranscript = sourceInterviews
         .map((interview, idx) => `--- Interview ${idx + 1}: ${interview.title} ---\n\n${interview.transcript_text}`)
@@ -209,12 +320,12 @@ export function useInterviews(userId?: string) {
           title,
           transcript_text: combinedTranscript,
           analysis_status: 'completed',
-          workflows: mergedAnalysis.workflows as any,
-          pain_points: mergedAnalysis.painPoints as any,
-          tools: mergedAnalysis.tools as any,
-          roles: mergedAnalysis.roles as any,
-          training_gaps: mergedAnalysis.trainingGaps as any,
-          handoff_risks: mergedAnalysis.handoffRisks as any,
+          workflows: mergedAnalysis.workflows as unknown as Interview['workflows'],
+          pain_points: mergedAnalysis.painPoints as unknown as Interview['pain_points'],
+          tools: mergedAnalysis.tools as unknown as Interview['tools'],
+          roles: mergedAnalysis.roles as unknown as Interview['roles'],
+          training_gaps: mergedAnalysis.trainingGaps as unknown as Interview['training_gaps'],
+          handoff_risks: mergedAnalysis.handoffRisks as unknown as Interview['handoff_risks'],
           analyzed_at: new Date().toISOString(),
         })
         .select()
@@ -222,11 +333,12 @@ export function useInterviews(userId?: string) {
 
       if (insertError) throw insertError;
 
-      await fetchInterviews();
+      // Invalidate to refetch with new interview
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews.list(userId) });
+
       return { data: data as Interview, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to merge interviews';
-      setError(errorMessage);
       return { data: null, error: errorMessage };
     }
   };
@@ -241,6 +353,6 @@ export function useInterviews(userId?: string) {
     assignToCompany,
     analyzeInterview,
     mergeInterviews,
-    refreshInterviews: fetchInterviews,
+    refreshInterviews,
   };
 }

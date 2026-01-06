@@ -96,7 +96,9 @@ export function InterviewSearchBar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             ref={searchInputRef}
-            type="text"
+            type="search"
+            role="searchbox"
+            aria-label="Search interviews by title or content"
             value={localSearch}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search interviews by title or content... (Cmd+K)"
@@ -105,6 +107,7 @@ export function InterviewSearchBar({
           {localSearch && (
             <button
               onClick={handleClearSearch}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
             >
               <X className="w-4 h-4" />
@@ -115,6 +118,9 @@ export function InterviewSearchBar({
         {/* Filter toggle button */}
         <button
           onClick={() => setShowFilters(!showFilters)}
+          aria-expanded={showFilters}
+          aria-controls="filter-panel"
+          aria-label={hasActiveFilters ? `Filters (${resultCount} of ${totalCount} results)` : 'Filters'}
           className={`
             flex items-center gap-2 px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors
             ${showFilters || hasActiveFilters
@@ -123,22 +129,28 @@ export function InterviewSearchBar({
             }
           `}
         >
-          <Filter className="w-4 h-4" />
+          <Filter className="w-4 h-4" aria-hidden="true" />
           Filters
           {hasActiveFilters && (
-            <span className="bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+            <span className="bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full" aria-hidden="true">
               !
             </span>
           )}
           <ChevronDown
             className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            aria-hidden="true"
           />
         </button>
       </div>
 
       {/* Filter dropdowns row */}
       {showFilters && (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+        <div
+          id="filter-panel"
+          role="region"
+          aria-label="Filter options"
+          className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200"
+        >
           {/* Status filter */}
           <FilterDropdown
             label="Status"
