@@ -223,15 +223,145 @@ ${transcript}`,
 }
 
 /**
+ * Generate AI-powered executive summary from aggregated data
+ */
+async function generateExecutiveSummary(
+  summaryData: CompanySummaryData
+): Promise<CompanySummaryData['executiveSummary']> {
+  const prompt = `You are an expert business consultant. Based on the aggregated interview data below, generate an executive summary.
+
+## Data from ${summaryData.totalInterviews || 0} interviews:
+
+### Critical Pain Points:
+${summaryData.criticalPainPoints?.slice(0, 8).map(p =>
+  `- ${p.description} (${p.severity} severity, affects ${p.affectedCount} interviews)`
+).join('\n') || 'None identified'}
+
+### Top Workflows:
+${summaryData.topWorkflows?.slice(0, 5).map(w =>
+  `- ${w.name} (mentioned ${w.mentions} times, frequency: ${w.frequency})`
+).join('\n') || 'None identified'}
+
+### Tools in Use:
+${summaryData.commonTools?.slice(0, 8).map(t =>
+  `- ${t.name}: used by ${t.userCount} users (${t.roles.join(', ')})`
+).join('\n') || 'None identified'}
+
+### Training Gaps:
+${summaryData.priorityTrainingGaps?.slice(0, 5).map(g =>
+  `- ${g.area} (${g.priority} priority, affects: ${g.affectedRoles.join(', ')})`
+).join('\n') || 'None identified'}
+
+### High Risk Handoffs:
+${summaryData.highRiskHandoffs?.slice(0, 5).map(h =>
+  `- ${h.fromRole} → ${h.toRole}: ${h.process} (${h.occurrences} occurrences)`
+).join('\n') || 'None identified'}
+
+### Key Recommendations:
+${summaryData.recommendations?.slice(0, 5).map(r =>
+  `- ${r.text}`
+).join('\n') || 'None identified'}
+
+Generate a JSON response with this exact structure:
+{
+  "narrativeSummary": "3-5 paragraphs summarizing the current operational state, key challenges discovered, strengths observed, and overall assessment of organizational health",
+  "keyFindings": ["finding1", "finding2", "finding3", "finding4", "finding5", "finding6", "finding7"],
+  "topRisks": [
+    {"id": "risk-1", "text": "Description of risk 1", "rank": 1},
+    {"id": "risk-2", "text": "Description of risk 2", "rank": 2},
+    {"id": "risk-3", "text": "Description of risk 3", "rank": 3},
+    {"id": "risk-4", "text": "Description of risk 4", "rank": 4},
+    {"id": "risk-5", "text": "Description of risk 5", "rank": 5}
+  ],
+  "topOpportunities": [
+    {"id": "opp-1", "text": "Description of opportunity 1", "rank": 1},
+    {"id": "opp-2", "text": "Description of opportunity 2", "rank": 2},
+    {"id": "opp-3", "text": "Description of opportunity 3", "rank": 3},
+    {"id": "opp-4", "text": "Description of opportunity 4", "rank": 4},
+    {"id": "opp-5", "text": "Description of opportunity 5", "rank": 5}
+  ],
+  "maturityLevel": <number 1-5>,
+  "maturityNotes": "Explanation of the maturity assessment"
+}
+
+Maturity Scale:
+1 = Ad-hoc: Processes are undocumented, reactive, and person-dependent
+2 = Developing: Some documentation exists, but inconsistent execution
+3 = Defined: Standardized processes documented and followed
+4 = Managed: Processes measured and controlled with metrics
+5 = Optimizing: Continuous improvement culture with proactive optimization
+
+CRITICAL: Respond with ONLY valid JSON. Do not include any text before or after the JSON object.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: 4096,
+      temperature: DEFAULT_TEMPERATURE,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude API');
+    }
+
+    // Extract JSON from response
+    let jsonText = content.text.trim();
+
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+
+    // Find JSON object
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in response');
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    return {
+      narrativeSummary: parsed.narrativeSummary || '',
+      keyFindings: parsed.keyFindings || [],
+      topRisks: parsed.topRisks || [],
+      topOpportunities: parsed.topOpportunities || [],
+      maturityLevel: parsed.maturityLevel || 1,
+      maturityNotes: parsed.maturityNotes || '',
+    };
+  } catch (error) {
+    console.error('Executive summary generation failed:', error);
+    return {
+      narrativeSummary: '',
+      keyFindings: [],
+      topRisks: [],
+      topOpportunities: [],
+      maturityLevel: 1,
+      maturityNotes: 'Assessment pending - AI generation failed. Please edit manually.',
+    };
+  }
+}
+
+/**
  * Generate a company-wide summary from multiple interview analyses
  */
 export async function generateCompanySummary(
   analyses: InterviewAnalysis[],
   dates: string[]
 ): Promise<CompanySummaryData> {
-  // Use local aggregation for speed and cost efficiency
-  // Alternative: Could use Claude for more intelligent summarization
-  return aggregateAnalyses(analyses, dates);
+  // First, aggregate the raw data locally for speed
+  const summaryData = aggregateAnalyses(analyses, dates);
+
+  // Then generate AI-powered executive summary
+  const executiveSummary = await generateExecutiveSummary(summaryData);
+
+  return {
+    ...summaryData,
+    executiveSummary,
+  };
 }
 
 /**
