@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, AlertTriangle, TrendingUp, Lightbulb, Edit2, Plus, Trash2 } from 'lucide-react';
 import { CompanySummaryData } from '../../../types/analysis';
 import { formatDate } from '../../../utils/dateFormatters';
@@ -60,6 +60,38 @@ export function ExecutiveSummarySection({
   const [maturityLevel, setMaturityLevel] = useState<1 | 2 | 3 | 4 | 5 | undefined>(executiveSummary.maturityLevel);
   const [maturityNotes, setMaturityNotes] = useState(executiveSummary.maturityNotes || '');
   const [isEditingMaturity, setIsEditingMaturity] = useState(false);
+
+  // Sync local state with prop changes (e.g., when data is refreshed from server)
+  useEffect(() => {
+    if (!isEditingNarrative) {
+      setNarrativeText(executiveSummary.narrativeSummary || '');
+    }
+  }, [executiveSummary.narrativeSummary, isEditingNarrative]);
+
+  useEffect(() => {
+    if (!isEditingFindings) {
+      setFindings(executiveSummary.keyFindings || []);
+    }
+  }, [executiveSummary.keyFindings, isEditingFindings]);
+
+  useEffect(() => {
+    if (!isEditingRisks) {
+      setRisks(executiveSummary.topRisks || []);
+    }
+  }, [executiveSummary.topRisks, isEditingRisks]);
+
+  useEffect(() => {
+    if (!isEditingOpportunities) {
+      setOpportunities(executiveSummary.topOpportunities || []);
+    }
+  }, [executiveSummary.topOpportunities, isEditingOpportunities]);
+
+  useEffect(() => {
+    if (!isEditingMaturity) {
+      setMaturityLevel(executiveSummary.maturityLevel);
+      setMaturityNotes(executiveSummary.maturityNotes || '');
+    }
+  }, [executiveSummary.maturityLevel, executiveSummary.maturityNotes, isEditingMaturity]);
 
   const highPriorityRecs = recommendations.filter(r => r.priority === 'high').slice(0, 3);
 

@@ -675,7 +675,7 @@ function App() {
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
             <CompanySummaryView
-              summary={selectedSummary}
+              summary={summaries.find(s => s.id === selectedSummary.id) || selectedSummary}
               interviews={interviews.filter(i => selectedSummary.interview_ids?.includes(i.id))}
               onBack={() => setSelectedSummary(null)}
               onUpdate={updateSummary}

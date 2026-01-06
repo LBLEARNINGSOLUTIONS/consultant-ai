@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, FileText, TrendingUp, AlertTriangle, Wrench } from 'lucide-react';
 import { CompanySummaryData, RoleProfile, WorkflowProfile, ToolProfile, TrainingGapProfile, RecommendationProfile, SummarySOWConfig } from '../../types/analysis';
 import { CompanySummary, Interview, Json } from '../../types/database';
@@ -116,6 +116,39 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
 
   // SOW configuration
   const [sowConfig, setSowConfig] = useState<SummarySOWConfig | null>(data.sowConfig || null);
+
+  // Sync local state when summary prop changes (e.g., after save updates React Query cache)
+  useEffect(() => {
+    const newData = summary.summary_data as unknown as CompanySummaryData;
+    const newExecSummary = (newData as unknown as { executiveSummary?: ExecutiveSummary }).executiveSummary || {};
+    setExecutiveSummary(newExecSummary);
+  }, [summary.summary_data]);
+
+  useEffect(() => {
+    const newData = summary.summary_data as unknown as CompanySummaryData;
+    setPainPoints(newData.criticalPainPoints || []);
+    setHandoffs(newData.highRiskHandoffs || []);
+    setRoleDistribution(newData.roleDistribution || {});
+    setSowConfig(newData.sowConfig || null);
+
+    const newCompanyContext = (newData as unknown as { companyContext?: CompanyContext }).companyContext || {};
+    setCompanyContext(newCompanyContext);
+
+    const newRoleProfiles = (newData as unknown as { roleProfiles?: RoleProfile[] }).roleProfiles;
+    setCustomRoleProfiles(newRoleProfiles || null);
+
+    const newWorkflowProfiles = (newData as unknown as { workflowProfiles?: WorkflowProfile[] }).workflowProfiles;
+    setCustomWorkflowProfiles(newWorkflowProfiles || null);
+
+    const newToolProfiles = (newData as unknown as { toolProfiles?: ToolProfile[] }).toolProfiles;
+    setCustomToolProfiles(newToolProfiles || null);
+
+    const newTrainingGapProfiles = (newData as unknown as { trainingGapProfiles?: TrainingGapProfile[] }).trainingGapProfiles;
+    setCustomTrainingGapProfiles(newTrainingGapProfiles || null);
+
+    const newRecommendationProfiles = (newData as unknown as { recommendationProfiles?: RecommendationProfile[] }).recommendationProfiles;
+    setCustomRecommendationProfiles(newRecommendationProfiles || null);
+  }, [summary.summary_data]);
 
   // Merge base profiles with customizations
   const roleProfiles = useMemo(() => {
