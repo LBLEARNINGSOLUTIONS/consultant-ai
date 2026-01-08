@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { ClipboardList, Settings, Download, FileText } from 'lucide-react';
-import { RecommendationProfile, SummarySOWConfig, SOWDocument } from '../../../types/analysis';
+import { RecommendationProfile, SummarySOWConfig, SOWDocument, DeliveryProfile } from '../../../types/analysis';
 import { formatCurrency } from '../../../utils/formatters';
 import { SOWSelectionPanel } from './SOWSelectionPanel';
 import { SOWDocumentEditor } from './SOWDocumentEditor';
 import { SOWGenerateModal } from './SOWGenerateModal';
 import { ScopeOfWorkConfigModal } from './ScopeOfWorkConfigModal';
+import { DeliveryProfileEditModal } from './DeliveryProfileEditModal';
 
 interface SOWBuilderSectionProps {
   recommendationProfiles: RecommendationProfile[];
@@ -33,10 +34,9 @@ const defaultSOWConfig: SummarySOWConfig = {
 export function SOWBuilderSection({
   recommendationProfiles,
   sowConfig,
-  onUpdateProfiles: _onUpdateProfiles,
+  onUpdateProfiles,
   onUpdateSOWConfig,
 }: SOWBuilderSectionProps) {
-  // Note: _onUpdateProfiles is available for future use if needed to update individual profiles
   const effectiveConfig = sowConfig || defaultSOWConfig;
 
   // Initialize document from config or create new
@@ -46,6 +46,7 @@ export function SOWBuilderSection({
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<RecommendationProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Get selected profiles for stats
@@ -97,6 +98,20 @@ export function SOWBuilderSection({
       selectedRecommendationIds: selectedIds,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  // Handle saving delivery profile edits
+  const handleSaveDeliveryProfile = async (newProfile: DeliveryProfile) => {
+    if (!editingProfile || !onUpdateProfiles) return;
+
+    const updatedProfiles = recommendationProfiles.map(p =>
+      p.id === editingProfile.id
+        ? { ...p, deliveryProfile: newProfile }
+        : p
+    );
+
+    await onUpdateProfiles(updatedProfiles);
+    setEditingProfile(null);
   };
 
   // Count items with delivery profiles
@@ -163,6 +178,7 @@ export function SOWBuilderSection({
               selectedIds={document.selectedRecommendationIds}
               onSelectionChange={handleSelectionChange}
               sowConfig={effectiveConfig}
+              onEditProfile={onUpdateProfiles ? setEditingProfile : undefined}
             />
           </div>
 
@@ -202,6 +218,16 @@ export function SOWBuilderSection({
         document={document}
         recommendationProfiles={recommendationProfiles}
         sowConfig={effectiveConfig}
+      />
+
+      {/* Delivery Profile Edit Modal */}
+      <DeliveryProfileEditModal
+        isOpen={!!editingProfile}
+        onClose={() => setEditingProfile(null)}
+        profile={editingProfile?.deliveryProfile}
+        recommendationTitle={editingProfile?.title || ''}
+        defaultHourlyRate={effectiveConfig.defaultHourlyRate}
+        onSave={handleSaveDeliveryProfile}
       />
     </div>
   );

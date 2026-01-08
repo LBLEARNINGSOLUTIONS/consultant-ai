@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, CheckSquare, Square } from 'lucide-react';
+import { Search, CheckSquare, Square, Pencil } from 'lucide-react';
 import { RecommendationProfile, SummarySOWConfig } from '../../../types/analysis';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -8,6 +8,7 @@ interface SOWSelectionPanelProps {
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   sowConfig: SummarySOWConfig;
+  onEditProfile?: (profile: RecommendationProfile) => void;
 }
 
 export function SOWSelectionPanel({
@@ -15,6 +16,7 @@ export function SOWSelectionPanel({
   selectedIds,
   onSelectionChange,
   sowConfig,
+  onEditProfile,
 }: SOWSelectionPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'configured' | 'selected'>('configured');
@@ -174,15 +176,17 @@ export function SOWSelectionPanel({
               return (
                 <div
                   key={profile.id}
-                  onClick={() => hasDelivery && toggleSelection(profile.id)}
-                  className={`p-3 flex items-start gap-3 transition-colors ${
+                  className={`p-3 flex items-start gap-3 transition-colors group ${
                     hasDelivery
-                      ? 'cursor-pointer hover:bg-slate-50'
-                      : 'opacity-50 cursor-not-allowed'
+                      ? 'hover:bg-slate-50'
+                      : 'opacity-50'
                   } ${isSelected(profile.id) ? 'bg-indigo-50' : ''}`}
                 >
                   {/* Checkbox */}
-                  <div className="mt-0.5">
+                  <div
+                    className={`mt-0.5 ${hasDelivery ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                    onClick={() => hasDelivery && toggleSelection(profile.id)}
+                  >
                     {hasDelivery ? (
                       isSelected(profile.id) ? (
                         <CheckSquare className="w-5 h-5 text-indigo-600" />
@@ -195,7 +199,10 @@ export function SOWSelectionPanel({
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className={`flex-1 min-w-0 ${hasDelivery ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                    onClick={() => hasDelivery && toggleSelection(profile.id)}
+                  >
                     <h4 className="text-sm font-medium text-slate-900 truncate">
                       {profile.title}
                     </h4>
@@ -209,6 +216,20 @@ export function SOWSelectionPanel({
                       <p className="text-xs text-slate-400 mt-1">Not configured</p>
                     )}
                   </div>
+
+                  {/* Edit button */}
+                  {onEditProfile && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditProfile(profile);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Edit delivery profile"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}
