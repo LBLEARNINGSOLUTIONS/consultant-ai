@@ -1,4 +1,4 @@
-import { Lightbulb, Edit2, Trash2, Clock, Zap, Calendar, TrendingUp, GraduationCap, Wrench, Users, Shield, Link } from 'lucide-react';
+import { Lightbulb, Edit2, Trash2, Clock, Zap, Calendar, TrendingUp, GraduationCap, Wrench, Users, Shield, Link, ClipboardList } from 'lucide-react';
 import { RecommendationProfile } from '../../../types/analysis';
 import { Badge } from '../../analysis/Badge';
 
@@ -7,7 +7,9 @@ interface RecommendationCardProps {
   onClick: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onAddToScope?: () => void;
   canEdit?: boolean;
+  isInScope?: boolean;
 }
 
 const categoryIcons: Record<RecommendationProfile['category'], typeof Lightbulb> = {
@@ -64,7 +66,7 @@ const effortColors: Record<RecommendationProfile['levelOfEffort'], string> = {
   high: 'text-red-600',
 };
 
-export function RecommendationCard({ profile, onClick, onEdit, onDelete, canEdit }: RecommendationCardProps) {
+export function RecommendationCard({ profile, onClick, onEdit, onDelete, onAddToScope, canEdit, isInScope }: RecommendationCardProps) {
   const CategoryIcon = categoryIcons[profile.category];
   const PhaseIcon = phaseIcons[profile.phase];
   const isHighPriority = profile.priority === 'high';
@@ -113,6 +115,19 @@ export function RecommendationCard({ profile, onClick, onEdit, onDelete, canEdit
             </div>
             {canEdit && (
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onAddToScope && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (!isInScope) onAddToScope(); }}
+                    className={`p-1.5 rounded transition-colors ${
+                      isInScope
+                        ? 'text-emerald-600 bg-emerald-50 cursor-default'
+                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                    title={isInScope ? 'Already in scope' : 'Add to scope of work'}
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                  </button>
+                )}
                 {onEdit && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(); }}

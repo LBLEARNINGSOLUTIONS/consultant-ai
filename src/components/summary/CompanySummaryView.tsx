@@ -437,6 +437,8 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
             recommendationProfiles={recommendationProfiles}
             onUpdateProfiles={onUpdate ? handleUpdateRecommendationProfiles : undefined}
             defaultHourlyRate={sowConfig?.defaultHourlyRate}
+            sowConfig={sowConfig}
+            onUpdateSOWConfig={onUpdate ? handleUpdateSOWConfig : undefined}
           />
         );
 

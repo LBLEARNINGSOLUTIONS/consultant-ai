@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Lightbulb, Plus, Search, Filter, Zap, Clock, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
-import { RecommendationProfile } from '../../../types/analysis';
+import { RecommendationProfile, SummarySOWConfig, SOWDocument } from '../../../types/analysis';
 import { RecommendationCard } from './RecommendationCard';
 import { RecommendationListRow } from './RecommendationListRow';
 import { RecommendationDetailModal } from './RecommendationDetailModal';
@@ -12,7 +12,20 @@ interface RecommendationsSectionProps {
   recommendationProfiles?: RecommendationProfile[];
   onUpdateProfiles?: (profiles: RecommendationProfile[]) => Promise<void>;
   defaultHourlyRate?: number;
+  sowConfig?: SummarySOWConfig | null;
+  onUpdateSOWConfig?: (config: SummarySOWConfig) => Promise<void>;
 }
+
+const createEmptyDocument = (): SOWDocument => ({
+  id: `sow-${Date.now()}`,
+  executiveSummary: '',
+  objective: '',
+  phases: [],
+  packages: [],
+  selectedRecommendationIds: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
 
 const categoryLabels: Record<RecommendationProfile['category'], string> = {
   process: 'Process',
@@ -49,7 +62,13 @@ const phaseIcons: Record<RecommendationProfile['phase'], typeof Zap> = {
 const categories: RecommendationProfile['category'][] = ['process', 'training', 'technology', 'organization', 'risk-mitigation'];
 const phases: RecommendationProfile['phase'][] = ['immediate', 'short-term', 'long-term'];
 
-export function RecommendationsSection({ recommendationProfiles = [], onUpdateProfiles, defaultHourlyRate = 150 }: RecommendationsSectionProps) {
+export function RecommendationsSection({
+  recommendationProfiles = [],
+  onUpdateProfiles,
+  defaultHourlyRate = 150,
+  sowConfig,
+  onUpdateSOWConfig,
+}: RecommendationsSectionProps) {
   const [selectedRec, setSelectedRec] = useState<RecommendationProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<RecommendationProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +81,28 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<RecommendationProfile['category']>('process');
+
+  // Add to scope handler
+  const handleAddToScope = async (profileId: string) => {
+    if (!onUpdateSOWConfig || !sowConfig) return;
+
+    const doc = sowConfig.sowDocument || createEmptyDocument();
+    if (doc.selectedRecommendationIds.includes(profileId)) return; // Already added
+
+    await onUpdateSOWConfig({
+      ...sowConfig,
+      sowDocument: {
+        ...doc,
+        selectedRecommendationIds: [...doc.selectedRecommendationIds, profileId],
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  // Check if profile is in scope
+  const isInScope = (profileId: string) => {
+    return sowConfig?.sowDocument?.selectedRecommendationIds?.includes(profileId) || false;
+  };
 
   // Filter profiles
   const filteredProfiles = useMemo(() => {
@@ -352,7 +393,9 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
                 onClick={() => setSelectedRec(profile)}
                 onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
                 onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                onAddToScope={onUpdateSOWConfig ? () => handleAddToScope(profile.id) : undefined}
                 canEdit={canEdit}
+                isInScope={isInScope(profile.id)}
               />
             ))}
           </div>
@@ -365,7 +408,9 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
                 onClick={() => setSelectedRec(profile)}
                 onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
                 onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                onAddToScope={onUpdateSOWConfig ? () => handleAddToScope(profile.id) : undefined}
                 canEdit={canEdit}
+                isInScope={isInScope(profile.id)}
               />
             ))}
           </div>
@@ -411,7 +456,9 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
                             onClick={() => setSelectedRec(profile)}
                             onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
                             onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                            onAddToScope={onUpdateSOWConfig ? () => handleAddToScope(profile.id) : undefined}
                             canEdit={canEdit}
+                            isInScope={isInScope(profile.id)}
                           />
                         ))}
                       </div>
@@ -424,7 +471,9 @@ export function RecommendationsSection({ recommendationProfiles = [], onUpdatePr
                             onClick={() => setSelectedRec(profile)}
                             onEdit={canEdit ? () => setEditingProfile(profile) : undefined}
                             onDelete={canEdit ? () => setDeleteConfirm(profile.id) : undefined}
+                            onAddToScope={onUpdateSOWConfig ? () => handleAddToScope(profile.id) : undefined}
                             canEdit={canEdit}
+                            isInScope={isInScope(profile.id)}
                           />
                         ))}
                       </div>

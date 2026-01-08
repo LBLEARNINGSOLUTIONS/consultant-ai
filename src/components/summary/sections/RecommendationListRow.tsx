@@ -1,4 +1,4 @@
-import { Lightbulb, Edit2, Trash2, Clock, Zap, Calendar, TrendingUp, GraduationCap, Wrench, Users, Shield } from 'lucide-react';
+import { Lightbulb, Edit2, Trash2, Clock, Zap, Calendar, TrendingUp, GraduationCap, Wrench, Users, Shield, ClipboardList } from 'lucide-react';
 import { RecommendationProfile } from '../../../types/analysis';
 
 interface RecommendationListRowProps {
@@ -6,7 +6,9 @@ interface RecommendationListRowProps {
   onClick: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onAddToScope?: () => void;
   canEdit?: boolean;
+  isInScope?: boolean;
 }
 
 const categoryIcons: Record<RecommendationProfile['category'], typeof Lightbulb> = {
@@ -68,7 +70,9 @@ export function RecommendationListRow({
   onClick,
   onEdit,
   onDelete,
+  onAddToScope,
   canEdit = false,
+  isInScope = false,
 }: RecommendationListRowProps) {
   const CategoryIcon = categoryIcons[profile.category];
   const PhaseIcon = phaseIcons[profile.phase];
@@ -130,6 +134,19 @@ export function RecommendationListRow({
           className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
+          {onAddToScope && (
+            <button
+              onClick={() => { if (!isInScope) onAddToScope(); }}
+              className={`p-1.5 rounded transition-colors ${
+                isInScope
+                  ? 'text-emerald-600 bg-emerald-50 cursor-default'
+                  : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+              }`}
+              title={isInScope ? 'Already in scope' : 'Add to scope of work'}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={onEdit}
             className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
