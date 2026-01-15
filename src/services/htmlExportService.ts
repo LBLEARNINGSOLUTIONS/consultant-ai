@@ -659,6 +659,195 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
       .evidence-stats { grid-template-columns: repeat(2, 1fr); }
       .cards-grid { grid-template-columns: 1fr; }
     }
+
+    /* Popover System */
+    .popover-trigger {
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .popover-trigger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+
+    .popover-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .popover-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .popover {
+      position: fixed;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      max-width: 600px;
+      max-height: 80vh;
+      width: calc(100% - 2rem);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: transform 0.25s, opacity 0.25s;
+      z-index: 101;
+    }
+
+    .popover.active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .popover-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .popover-header.workflow { background: linear-gradient(135deg, #3B82F6, #6366F1); }
+    .popover-header.role { background: linear-gradient(135deg, #8B5CF6, #6366F1); }
+    .popover-header.tool { background: linear-gradient(135deg, #6366F1, #0891B2); }
+    .popover-header.training { background: linear-gradient(135deg, #F59E0B, #D97706); }
+    .popover-header.recommendation { background: linear-gradient(135deg, #10B981, #14B8A6); }
+    .popover-header.bottleneck { background: linear-gradient(135deg, #EF4444, #F97316); }
+
+    .popover-title {
+      color: white;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .popover-subtitle {
+      color: rgba(255,255,255,0.8);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .popover-close {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      margin-left: 1rem;
+    }
+
+    .popover-close:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .popover-content {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .popover-section {
+      margin-bottom: 1rem;
+    }
+
+    .popover-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .popover-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--slate-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .popover-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .popover-stat-card {
+      background: var(--slate-50);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+
+    .popover-stat-label {
+      font-size: 0.7rem;
+      color: var(--slate-500);
+      text-transform: uppercase;
+    }
+
+    .popover-stat-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--slate-800);
+      margin-top: 0.125rem;
+    }
+
+    .popover-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .popover-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--slate-100);
+      font-size: 0.85rem;
+      color: var(--slate-700);
+    }
+
+    .popover-list li:last-child {
+      border-bottom: none;
+    }
+
+    .popover-description {
+      font-size: 0.9rem;
+      color: var(--slate-700);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .popover {
+        max-width: 100%;
+        max-height: 85vh;
+        width: 100%;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        border-radius: 1rem 1rem 0 0;
+        transform: translateY(100%);
+      }
+
+      .popover.active {
+        transform: translateY(0);
+      }
+
+      .popover-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -859,7 +1048,17 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${roleProfiles.length ? `
             <div class="cards-grid">
               ${roleProfiles.map(role => `
-                <div class="profile-card" id="role-${slugify(role.title)}">
+                <div class="profile-card popover-trigger" id="role-${slugify(role.title)}" data-popover-type="role" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  title: role.title,
+                  count: role.count,
+                  responsibilities: role.responsibilities,
+                  workflows: role.workflows,
+                  tools: role.tools,
+                  inputsFrom: role.inputsFrom,
+                  outputsTo: role.outputsTo,
+                  issuesDetected: role.issuesDetected,
+                  trainingNeeds: role.trainingNeeds
+                }))}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box purple">${icons.users}</div>
                     <div>
@@ -912,7 +1111,16 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${workflowProfiles.length ? `
             <div class="cards-grid">
               ${workflowProfiles.map(wf => `
-                <div class="profile-card" id="workflow-${slugify(wf.name)}">
+                <div class="profile-card popover-trigger" id="workflow-${slugify(wf.name)}" data-popover-type="workflow" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  name: wf.name,
+                  count: wf.count,
+                  frequency: wf.frequency,
+                  steps: wf.steps,
+                  participants: wf.participants,
+                  systems: wf.systems,
+                  failurePoints: wf.failurePoints,
+                  unclearSteps: wf.unclearSteps
+                }))}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box blue">${icons.workflow}</div>
                     <div>
@@ -973,7 +1181,14 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
             <div class="subsection">
               <div class="subsection-title">${icons.alertTriangle} Critical Pain Points (${data.criticalPainPoints.length})</div>
               ${data.criticalPainPoints.slice(0, 10).map((pp: any) => `
-                <div class="pain-point-card ${pp.severity || 'medium'}">
+                <div class="pain-point-card popover-trigger ${pp.severity || 'medium'}" data-popover-type="bottleneck" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  description: pp.description,
+                  severity: pp.severity,
+                  affectedCount: pp.affectedCount,
+                  affectedRoles: pp.affectedRoles,
+                  impact: pp.impact,
+                  suggestedSolution: pp.suggestedSolution
+                }))}">
                   <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                     <span class="badge badge-${pp.severity === 'critical' ? 'red' : pp.severity === 'high' ? 'orange' : 'amber'}">${(pp.severity || 'MEDIUM').toUpperCase()}</span>
                     ${pp.affectedCount ? `<span class="badge badge-blue">${pp.affectedCount} affected</span>` : ''}
@@ -989,7 +1204,14 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
             <div class="subsection">
               <div class="subsection-title" style="color: var(--orange-600);">${icons.arrowRight} High-Risk Handoffs (${data.highRiskHandoffs.length})</div>
               ${data.highRiskHandoffs.slice(0, 8).map((h: any) => `
-                <div class="handoff-card">
+                <div class="handoff-card popover-trigger" data-popover-type="bottleneck" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  fromRole: h.fromRole,
+                  toRole: h.toRole,
+                  process: h.process,
+                  occurrences: h.occurrences,
+                  description: h.description,
+                  mitigation: h.mitigation
+                }))}">
                   <div class="handoff-flow">
                     <a href="#role-${slugify(h.fromRole)}" class="handoff-role-link" data-type="role" data-target="${escapeHtml(h.fromRole)}">${escapeHtml(h.fromRole)}</a>
                     ${icons.arrowRight}
@@ -1019,7 +1241,18 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${toolProfiles.length ? `
             <div class="cards-grid">
               ${toolProfiles.map(tool => `
-                <div class="profile-card" id="tool-${slugify(tool.name)}" style="${tool.gaps?.some(g => g.severity === 'high') ? 'border-left: 3px solid var(--red-500);' : ''}">
+                <div class="profile-card popover-trigger" id="tool-${slugify(tool.name)}" data-popover-type="tool" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  name: tool.name,
+                  category: tool.category,
+                  count: tool.count,
+                  intendedPurpose: tool.intendedPurpose,
+                  actualUsage: tool.actualUsage,
+                  usedBy: tool.usedBy,
+                  workflows: tool.workflows,
+                  integratesWith: tool.integratesWith,
+                  gaps: tool.gaps,
+                  limitations: tool.limitations
+                }))}" style="${tool.gaps?.some(g => g.severity === 'high') ? 'border-left: 3px solid var(--red-500);' : ''}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box ${getCategoryColor(tool.category)}">${icons.wrench}</div>
                     <div>
@@ -1090,7 +1323,19 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ${trainingGapProfiles.length ? `
             <div class="cards-grid">
               ${trainingGapProfiles.map(gap => `
-                <div class="profile-card" id="training-${slugify(gap.area)}" style="${gap.risk?.severity === 'critical' || gap.risk?.severity === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+                <div class="profile-card popover-trigger" id="training-${slugify(gap.area)}" data-popover-type="training" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  area: gap.area,
+                  category: gap.category,
+                  priority: gap.priority,
+                  count: gap.count,
+                  currentState: gap.currentState,
+                  desiredState: gap.desiredState,
+                  suggestedTraining: gap.suggestedTraining,
+                  affectedRoles: gap.affectedRoles,
+                  relatedSystems: gap.relatedSystems,
+                  relatedWorkflows: gap.relatedWorkflows,
+                  risk: gap.risk
+                }))}" style="${gap.risk?.severity === 'critical' || gap.risk?.severity === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box ${gap.category === 'system' ? 'cyan' : gap.category === 'process' ? 'blue' : gap.category === 'skill' ? 'purple' : 'amber'}">${icons.graduationCap}</div>
                     <div>
@@ -1290,6 +1535,7 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
     document.querySelectorAll('.tag-link, .handoff-role-link').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const type = link.getAttribute('data-type');
         const targetName = link.getAttribute('data-target');
         if (type && targetName) {
@@ -1297,6 +1543,252 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
         }
       });
     });
+
+    // Popover System
+    const PopoverManager = {
+      overlay: null,
+      container: null,
+      isOpen: false,
+
+      init() {
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'popover-overlay';
+        document.body.appendChild(this.overlay);
+
+        this.container = document.createElement('div');
+        this.container.className = 'popover';
+        document.body.appendChild(this.container);
+
+        this.overlay.addEventListener('click', () => this.close());
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.isOpen) this.close();
+        });
+
+        this.initTriggers();
+      },
+
+      initTriggers() {
+        document.querySelectorAll('[data-popover]').forEach(el => {
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('.tag-link, .handoff-role-link')) return;
+            const data = JSON.parse(el.getAttribute('data-popover'));
+            const type = el.getAttribute('data-popover-type');
+            this.open(data, type);
+          });
+        });
+      },
+
+      open(data, type) {
+        this.container.innerHTML = this.renderContent(data, type);
+        this.positionPopover();
+        this.overlay.classList.add('active');
+        this.container.classList.add('active');
+        this.isOpen = true;
+        document.body.style.overflow = 'hidden';
+        this.container.querySelector('.popover-close')?.addEventListener('click', () => this.close());
+      },
+
+      close() {
+        this.overlay.classList.remove('active');
+        this.container.classList.remove('active');
+        this.isOpen = false;
+        document.body.style.overflow = '';
+      },
+
+      positionPopover() {
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          this.container.style.cssText = 'top:auto;bottom:0;left:0;right:0;transform:none;';
+        } else {
+          this.container.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);bottom:auto;right:auto;';
+        }
+      },
+
+      renderContent(data, type) {
+        switch (type) {
+          case 'workflow': return this.renderWorkflow(data);
+          case 'role': return this.renderRole(data);
+          case 'tool': return this.renderTool(data);
+          case 'training': return this.renderTraining(data);
+          case 'recommendation': return this.renderRecommendation(data);
+          case 'bottleneck': return this.renderBottleneck(data);
+          default: return this.renderGeneric(data, type);
+        }
+      },
+
+      esc(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, c => map[c]);
+      },
+
+      renderWorkflow(wf) {
+        return \`
+          <div class="popover-header workflow">
+            <div><div class="popover-title">\${this.esc(wf.name)}</div>
+            <div class="popover-subtitle">\${wf.frequency || 'N/A'} • \${wf.count || 0} mentions</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            \${wf.steps?.length ? \`<div class="popover-section"><div class="popover-section-title">Process Steps (\${wf.steps.length})</div>
+              <ul class="popover-list">\${wf.steps.map((s, i) => \`<li><strong>\${i+1}.</strong> \${this.esc(typeof s === 'string' ? s : (s.name || s.description || ''))}</li>\`).join('')}</ul></div>\` : ''}
+            <div class="popover-grid">
+              \${wf.participants?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Participants</div>
+                <div class="popover-stat-value">\${wf.participants.slice(0,4).join(', ')}\${wf.participants.length > 4 ? '...' : ''}</div></div>\` : ''}
+              \${wf.systems?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Systems</div>
+                <div class="popover-stat-value">\${wf.systems.slice(0,4).join(', ')}\${wf.systems.length > 4 ? '...' : ''}</div></div>\` : ''}
+            </div>
+            \${wf.failurePoints?.length ? \`<div class="popover-section" style="background:var(--red-50);padding:0.75rem;border-radius:0.5rem;margin-top:1rem;">
+              <div class="popover-section-title" style="color:var(--red-600);">Failure Points (\${wf.failurePoints.length})</div>
+              <ul class="popover-list">\${wf.failurePoints.map(fp => \`<li style="color:var(--red-700);">\${this.esc(fp.description || fp)}</li>\`).join('')}</ul></div>\` : ''}
+          </div>\`;
+      },
+
+      renderRole(role) {
+        return \`
+          <div class="popover-header role">
+            <div><div class="popover-title">\${this.esc(role.title)}</div>
+            <div class="popover-subtitle">\${role.count || 0} interview\${(role.count || 0) !== 1 ? 's' : ''}</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            \${role.responsibilities?.length ? \`<div class="popover-section"><div class="popover-section-title">Responsibilities</div>
+              <ul class="popover-list">\${role.responsibilities.map(r => \`<li>\${this.esc(r)}</li>\`).join('')}</ul></div>\` : ''}
+            <div class="popover-grid">
+              \${role.workflows?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Workflows</div>
+                <div class="popover-stat-value">\${role.workflows.length}</div></div>\` : ''}
+              \${role.tools?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Tools Used</div>
+                <div class="popover-stat-value">\${role.tools.length}</div></div>\` : ''}
+            </div>
+            \${(role.inputsFrom?.length || role.outputsTo?.length) ? \`<div class="popover-section"><div class="popover-section-title">Dependencies</div>
+              \${role.inputsFrom?.length ? \`<p style="font-size:0.85rem;margin-bottom:0.5rem;"><strong>Receives from:</strong> \${role.inputsFrom.map(d => d.role || d).join(', ')}</p>\` : ''}
+              \${role.outputsTo?.length ? \`<p style="font-size:0.85rem;"><strong>Hands off to:</strong> \${role.outputsTo.map(d => d.role || d).join(', ')}</p>\` : ''}</div>\` : ''}
+            \${role.issuesDetected?.length ? \`<div class="popover-section" style="background:var(--red-50);padding:0.75rem;border-radius:0.5rem;">
+              <div class="popover-section-title" style="color:var(--red-600);">Issues (\${role.issuesDetected.length})</div>
+              <ul class="popover-list">\${role.issuesDetected.map(i => \`<li style="color:var(--red-700);">\${this.esc(i.description || i)}</li>\`).join('')}</ul></div>\` : ''}
+            \${role.trainingNeeds?.length ? \`<div class="popover-section" style="background:var(--amber-50);padding:0.75rem;border-radius:0.5rem;">
+              <div class="popover-section-title" style="color:var(--amber-600);">Training Needs (\${role.trainingNeeds.length})</div>
+              <ul class="popover-list">\${role.trainingNeeds.map(t => \`<li style="color:var(--amber-700);">\${this.esc(t.area || t)}</li>\`).join('')}</ul></div>\` : ''}
+          </div>\`;
+      },
+
+      renderTool(tool) {
+        return \`
+          <div class="popover-header tool">
+            <div><div class="popover-title">\${this.esc(tool.name)}</div>
+            <div class="popover-subtitle">\${tool.category || 'other'} • \${tool.count || 0} mentions</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            \${tool.intendedPurpose ? \`<div class="popover-section"><div class="popover-section-title">Purpose</div>
+              <p class="popover-description">\${this.esc(tool.intendedPurpose)}</p></div>\` : ''}
+            <div class="popover-grid">
+              \${tool.usedBy?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Used By</div>
+                <div class="popover-stat-value">\${tool.usedBy.map(u => u.role || u).slice(0,3).join(', ')}\${tool.usedBy.length > 3 ? '...' : ''}</div></div>\` : ''}
+              \${tool.workflows?.length ? \`<div class="popover-stat-card"><div class="popover-stat-label">Workflows</div>
+                <div class="popover-stat-value">\${tool.workflows.length}</div></div>\` : ''}
+            </div>
+            \${tool.integratesWith?.length ? \`<div class="popover-section"><div class="popover-section-title">Integrations</div>
+              <p style="font-size:0.85rem;">\${tool.integratesWith.join(', ')}</p></div>\` : ''}
+            \${tool.gaps?.length ? \`<div class="popover-section" style="background:var(--amber-50);padding:0.75rem;border-radius:0.5rem;">
+              <div class="popover-section-title" style="color:var(--amber-600);">Gaps (\${tool.gaps.length})</div>
+              <ul class="popover-list">\${tool.gaps.map(g => \`<li style="color:var(--amber-700);"><strong>\${g.severity || ''}:</strong> \${this.esc(g.description || g)}</li>\`).join('')}</ul></div>\` : ''}
+          </div>\`;
+      },
+
+      renderTraining(gap) {
+        return \`
+          <div class="popover-header training">
+            <div><div class="popover-title">\${this.esc(gap.area)}</div>
+            <div class="popover-subtitle">\${gap.priority || 'medium'} priority • \${gap.category || 'training'}</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            <div class="popover-grid">
+              <div class="popover-stat-card" style="background:var(--red-50);"><div class="popover-stat-label" style="color:var(--red-600);">Current State</div>
+                <div class="popover-stat-value" style="font-size:0.85rem;color:var(--red-700);">\${this.esc(gap.currentState || 'Not documented')}</div></div>
+              <div class="popover-stat-card" style="background:var(--green-50);"><div class="popover-stat-label" style="color:var(--green-600);">Desired State</div>
+                <div class="popover-stat-value" style="font-size:0.85rem;color:var(--green-700);">\${this.esc(gap.desiredState || 'Not documented')}</div></div>
+            </div>
+            \${gap.suggestedTraining ? \`<div class="popover-section"><div class="popover-section-title">Suggested Training</div>
+              <p class="popover-description">\${this.esc(gap.suggestedTraining)}</p></div>\` : ''}
+            \${gap.affectedRoles?.length ? \`<div class="popover-section"><div class="popover-section-title">Affected Roles</div>
+              <p style="font-size:0.85rem;">\${gap.affectedRoles.map(r => typeof r === 'string' ? r : r.role).join(', ')}</p></div>\` : ''}
+            \${gap.risk ? \`<div class="popover-section" style="background:\${gap.risk.severity === 'critical' || gap.risk.severity === 'high' ? 'var(--red-50)' : 'var(--amber-50)'};padding:0.75rem;border-radius:0.5rem;">
+              <div class="popover-section-title" style="color:\${gap.risk.severity === 'critical' || gap.risk.severity === 'high' ? 'var(--red-600)' : 'var(--amber-600)'};">Risk: \${(gap.risk.severity || '').toUpperCase()}</div>
+              <p style="font-size:0.85rem;">\${this.esc(gap.risk.description || '')}</p>
+              \${gap.risk.businessImpact ? \`<p style="font-size:0.85rem;margin-top:0.5rem;"><strong>Business Impact:</strong> \${this.esc(gap.risk.businessImpact)}</p>\` : ''}</div>\` : ''}
+          </div>\`;
+      },
+
+      renderRecommendation(rec) {
+        return \`
+          <div class="popover-header recommendation">
+            <div><div class="popover-title">\${this.esc(rec.title)}</div>
+            <div class="popover-subtitle">\${rec.category || ''} • \${rec.phase || ''} • \${rec.priority || 'medium'} priority</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            \${rec.description ? \`<div class="popover-section"><div class="popover-section-title">Description</div>
+              <p class="popover-description">\${this.esc(rec.description)}</p></div>\` : ''}
+            <div class="popover-grid">
+              \${rec.problemAddressed ? \`<div class="popover-stat-card" style="background:var(--red-50);"><div class="popover-stat-label" style="color:var(--red-600);">Problem</div>
+                <div class="popover-stat-value" style="font-size:0.8rem;color:var(--red-700);">\${this.esc(rec.problemAddressed)}</div></div>\` : ''}
+              \${rec.expectedImpact ? \`<div class="popover-stat-card" style="background:var(--green-50);"><div class="popover-stat-label" style="color:var(--green-600);">Impact</div>
+                <div class="popover-stat-value" style="font-size:0.8rem;color:var(--green-700);">\${this.esc(rec.expectedImpact)}</div></div>\` : ''}
+            </div>
+            \${rec.scope ? \`<div class="popover-section"><div class="popover-section-title">Scope</div>
+              <p style="font-size:0.85rem;">\${this.esc(rec.scope)}</p></div>\` : ''}
+            \${rec.levelOfEffort ? \`<div class="popover-section"><div class="popover-section-title">Effort Required</div>
+              <span class="badge badge-\${rec.levelOfEffort === 'high' ? 'red' : rec.levelOfEffort === 'medium' ? 'amber' : 'green'}">\${(rec.levelOfEffort || '').toUpperCase()}</span>
+              \${rec.effortDetails ? \`<p style="font-size:0.85rem;margin-top:0.5rem;">\${this.esc(rec.effortDetails)}</p>\` : ''}</div>\` : ''}
+            \${rec.dependencies?.length ? \`<div class="popover-section"><div class="popover-section-title">Dependencies</div>
+              <ul class="popover-list">\${rec.dependencies.map(d => \`<li>\${this.esc(d)}</li>\`).join('')}</ul></div>\` : ''}
+            \${rec.relatedItems && (rec.relatedItems.roles?.length || rec.relatedItems.workflows?.length || rec.relatedItems.tools?.length) ? \`<div class="popover-section"><div class="popover-section-title">Related Items</div>
+              \${rec.relatedItems.roles?.length ? \`<p style="font-size:0.85rem;"><strong>Roles:</strong> \${rec.relatedItems.roles.join(', ')}</p>\` : ''}
+              \${rec.relatedItems.workflows?.length ? \`<p style="font-size:0.85rem;"><strong>Workflows:</strong> \${rec.relatedItems.workflows.join(', ')}</p>\` : ''}
+              \${rec.relatedItems.tools?.length ? \`<p style="font-size:0.85rem;"><strong>Tools:</strong> \${rec.relatedItems.tools.join(', ')}</p>\` : ''}</div>\` : ''}
+          </div>\`;
+      },
+
+      renderBottleneck(item) {
+        const isHandoff = item.fromRole && item.toRole;
+        return \`
+          <div class="popover-header bottleneck">
+            <div><div class="popover-title">\${this.esc(isHandoff ? \`\${item.fromRole} → \${item.toRole}\` : (item.description || 'Bottleneck'))}</div>
+            <div class="popover-subtitle">\${item.severity || 'high'} severity\${item.occurrences ? \` • \${item.occurrences} occurrences\` : ''}</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            \${item.description && !isHandoff ? \`<div class="popover-section"><div class="popover-section-title">Description</div>
+              <p class="popover-description">\${this.esc(item.description)}</p></div>\` : ''}
+            \${isHandoff ? \`<div class="popover-section"><div class="popover-section-title">Handoff Details</div>
+              <p style="font-size:0.9rem;"><strong>\${this.esc(item.fromRole)}</strong> → <strong>\${this.esc(item.toRole)}</strong></p>
+              \${item.process ? \`<p style="font-size:0.85rem;color:var(--slate-600);margin-top:0.25rem;">\${this.esc(item.process)}</p>\` : ''}</div>\` : ''}
+            \${item.impact ? \`<div class="popover-section"><div class="popover-section-title">Impact</div>
+              <p style="font-size:0.9rem;color:var(--red-700);">\${this.esc(item.impact)}</p></div>\` : ''}
+            \${item.affectedRoles?.length ? \`<div class="popover-section"><div class="popover-section-title">Affected Roles</div>
+              <p style="font-size:0.85rem;">\${item.affectedRoles.join(', ')}</p></div>\` : ''}
+            \${(item.suggestedSolution || item.mitigation) ? \`<div class="popover-section" style="background:var(--green-50);padding:0.75rem;border-radius:0.5rem;">
+              <div class="popover-section-title" style="color:var(--green-600);">Suggested Solution</div>
+              <p style="font-size:0.85rem;color:var(--green-700);">\${this.esc(item.suggestedSolution || item.mitigation)}</p></div>\` : ''}
+          </div>\`;
+      },
+
+      renderGeneric(data, type) {
+        return \`
+          <div class="popover-header" style="background:linear-gradient(135deg,var(--slate-600),var(--slate-700));">
+            <div><div class="popover-title">\${this.esc(data.name || data.title || type)}</div></div>
+            <button class="popover-close">&times;</button>
+          </div>
+          <div class="popover-content">
+            <pre style="font-size:0.8rem;overflow-x:auto;">\${JSON.stringify(data, null, 2)}</pre>
+          </div>\`;
+      }
+    };
+
+    // Initialize popover system on DOM ready
+    PopoverManager.init();
   </script>
 </body>
 </html>`;
@@ -1318,6 +1810,15 @@ function escapeHtml(text: string): string {
     "'": '&#039;',
   };
   return text.replace(/[&<>"']/g, (char) => map[char]);
+}
+
+function escapeHtmlAttribute(json: string): string {
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function getMaturityLabel(level: number): string {
@@ -1411,8 +1912,24 @@ function renderRecommendationCard(rec: RecommendationProfile): string {
     'risk-mitigation': 'red'
   };
 
+  const popoverData = escapeHtmlAttribute(JSON.stringify({
+    title: rec.title,
+    description: rec.description,
+    category: rec.category,
+    phase: rec.phase,
+    priority: rec.priority,
+    problemAddressed: rec.problemAddressed,
+    scope: rec.scope,
+    expectedImpact: rec.expectedImpact,
+    levelOfEffort: rec.levelOfEffort,
+    effortDetails: rec.effortDetails,
+    dependencies: rec.dependencies,
+    relatedItems: rec.relatedItems,
+    source: rec.source
+  }));
+
   return `
-    <div class="profile-card" id="rec-${slugify(rec.title)}" style="${rec.priority === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
+    <div class="profile-card popover-trigger" id="rec-${slugify(rec.title)}" data-popover-type="recommendation" data-popover="${popoverData}" style="${rec.priority === 'high' ? 'border-left: 3px solid var(--red-500);' : ''}">
       <div class="profile-card-header">
         <div class="profile-icon-box ${categoryColors[rec.category] || 'indigo'}">${icons.lightbulb}</div>
         <div>
