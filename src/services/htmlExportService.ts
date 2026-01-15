@@ -1295,7 +1295,13 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ` : data.commonTools?.length ? `
             <div class="cards-grid">
               ${data.commonTools.slice(0, 12).map((tool: any) => `
-                <div class="profile-card">
+                <div class="profile-card popover-trigger" data-popover-type="tool" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  name: tool.name,
+                  category: tool.category,
+                  count: tool.userCount || 0,
+                  usedBy: tool.roles?.map((r: string) => ({ role: r })) || [],
+                  intendedPurpose: tool.purpose
+                }))}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box cyan">${icons.wrench}</div>
                     <div>
@@ -1376,7 +1382,15 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ` : data.priorityTrainingGaps?.length ? `
             <div class="cards-grid">
               ${data.priorityTrainingGaps.slice(0, 10).map((gap: any) => `
-                <div class="profile-card">
+                <div class="profile-card popover-trigger" data-popover-type="training" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  area: gap.area,
+                  category: gap.category,
+                  priority: gap.priority,
+                  affectedRoles: gap.affectedRoles,
+                  currentState: gap.currentState,
+                  desiredState: gap.desiredState,
+                  suggestedTraining: gap.suggestedTraining
+                }))}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box amber">${icons.graduationCap}</div>
                     <div>

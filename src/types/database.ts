@@ -218,6 +218,36 @@ export interface Database {
           }
         ];
       };
+      company_access: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          company_id: string;
+        };
+        Update: {
+          user_id?: string;
+          company_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'company_access_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'company_access_company_id_fkey';
+            columns: ['company_id'];
+            referencedRelation: 'companies';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -232,6 +262,7 @@ export type Company = Database['public']['Tables']['companies']['Row'];
 export type Interview = Database['public']['Tables']['interviews']['Row'];
 export type CompanySummary = Database['public']['Tables']['company_summaries']['Row'];
 export type TranscriptFile = Database['public']['Tables']['transcript_files']['Row'];
+export type CompanyAccessRow = Database['public']['Tables']['company_access']['Row'];
 
 export type InsertCompany = Database['public']['Tables']['companies']['Insert'];
 export type UpdateCompany = Database['public']['Tables']['companies']['Update'];

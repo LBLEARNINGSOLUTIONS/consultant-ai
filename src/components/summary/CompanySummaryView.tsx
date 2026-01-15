@@ -27,6 +27,7 @@ interface CompanySummaryViewProps {
   onBack: () => void;
   onUpdate?: (id: string, updates: { summary_data?: Json; title?: string }) => Promise<{ error: string | null }>;
   onViewInterview?: (interview: Interview) => void;
+  isAdmin?: boolean;
 }
 
 interface CompanyContext {
@@ -45,7 +46,7 @@ interface ExecutiveSummary {
   maturityNotes?: string;
 }
 
-export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onViewInterview }: CompanySummaryViewProps) {
+export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onViewInterview, isAdmin = true }: CompanySummaryViewProps) {
   const data = summary.summary_data as unknown as CompanySummaryData;
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState<SectionId>('executive');
@@ -538,7 +539,7 @@ export function CompanySummaryView({ summary, interviews, onBack, onUpdate, onVi
       {/* Main content area with sidebar */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Navigation */}
-        <SummaryNav activeSection={activeSection} onSectionChange={setActiveSection} />
+        <SummaryNav activeSection={activeSection} onSectionChange={setActiveSection} isAdmin={isAdmin} />
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-6 bg-slate-50">

@@ -13,7 +13,7 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, BarChart3, PieChart, Merge } from 'lucide-react';
+import { FileText, LogOut, Plus, BarChart3, PieChart, Merge, Shield } from 'lucide-react';
 import { VirtualizedInterviewGrid } from './components/interviews/VirtualizedInterviewGrid';
 import { SummaryCard } from './components/summaries/SummaryCard';
 import { SummaryStatsModal } from './components/summary/SummaryStatsModal';
@@ -21,6 +21,7 @@ import { CompanySummaryData } from './types/analysis';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingFallback } from './components/ui/LoadingFallback';
 import { InterviewCardSkeleton, SummaryCardSkeleton } from './components/ui/Skeleton';
+import { AdminPanel } from './components/admin/AdminPanel';
 
 // Lazy load heavy components with preload functions
 const AnalysisViewerImport = () => import('./components/analysis/AnalysisViewer');
@@ -37,7 +38,7 @@ export const preloadCompanySummaryView = () => CompanySummaryViewImport();
 export const preloadAnalyticsDashboard = () => AnalyticsDashboardImport();
 
 function App() {
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut, isAdmin } = useAuth();
   const { addToast } = useToast();
   const {
     interviews,
@@ -63,7 +64,7 @@ function App() {
     createCompany,
     updateCompany,
     deleteCompany,
-  } = useCompanies(user?.id);
+  } = useCompanies(user?.id, isAdmin);
 
   const [showUpload, setShowUpload] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<CompanyFilter>(null);
@@ -76,6 +77,7 @@ function App() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState<CompanySummary | null>(null);
   const [editingSummaryStats, setEditingSummaryStats] = useState<CompanySummary | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Filter interviews by selected company and search/filters - must be before early returns to maintain hooks order
   const {
@@ -371,6 +373,15 @@ function App() {
               <p className="text-sm font-medium text-slate-900">{profile?.name || user.email}</p>
               <p className="text-xs text-slate-500">{profile?.email || user.email}</p>
             </div>
+            {isAdmin && (
+              <button
+                onClick={() => setShowAdminPanel(true)}
+                className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="Admin Panel"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+            )}
             <button
               onClick={() => signOut()}
               className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
@@ -683,6 +694,7 @@ function App() {
               interviews={interviews.filter(i => selectedSummary.interview_ids?.includes(i.id))}
               onBack={() => setSelectedSummary(null)}
               onUpdate={updateSummary}
+              isAdmin={isAdmin}
             />
           </Suspense>
         </ErrorBoundary>
@@ -716,6 +728,15 @@ function App() {
           linkedInterviews={interviews
             .filter(i => editingSummaryStats.interview_ids?.includes(i.id))
             .map(i => ({ id: i.id, title: i.title }))}
+        />
+      )}
+
+      {/* Admin Panel */}
+      {isAdmin && user && (
+        <AdminPanel
+          isOpen={showAdminPanel}
+          onClose={() => setShowAdminPanel(false)}
+          adminUserId={user.id}
         />
       )}
     </div>

@@ -48,13 +48,19 @@ const navItems: NavItem[] = [
 interface SummaryNavProps {
   activeSection: SectionId;
   onSectionChange: (section: SectionId) => void;
+  isAdmin?: boolean;
 }
 
-export function SummaryNav({ activeSection, onSectionChange }: SummaryNavProps) {
+export function SummaryNav({ activeSection, onSectionChange, isAdmin = true }: SummaryNavProps) {
+  // Filter out Scope of Work tab for non-admin users (clients)
+  const visibleNavItems = navItems.filter(item =>
+    item.id !== 'scope-of-work' || isAdmin
+  );
+
   return (
     <nav className="w-64 flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
       <div className="py-4">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
 

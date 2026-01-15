@@ -110,10 +110,15 @@ export function useAuth() {
     }
   };
 
+  const isAdmin = profile?.role === 'admin';
+  const isClient = profile?.role === 'client';
+
   return {
     user,
     profile,
     loading,
+    isAdmin,
+    isClient,
     signUp,
     signIn,
     signOut,

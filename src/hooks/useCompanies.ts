@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase';
 import { queryKeys } from '../lib/queryKeys';
 import { Company, InsertCompany, UpdateCompany } from '../types/database';
 
-// Fetch companies from Supabase
-async function fetchCompanies(userId: string): Promise<Company[]> {
+// Fetch companies for admin (companies they own)
+async function fetchAdminCompanies(userId: string): Promise<Company[]> {
   const { data, error } = await supabase
     .from('companies')
     .select('*')
@@ -16,7 +16,36 @@ async function fetchCompanies(userId: string): Promise<Company[]> {
   return (data || []) as Company[];
 }
 
-export function useCompanies(userId?: string) {
+// Fetch companies for client (companies they have access to)
+async function fetchClientCompanies(userId: string): Promise<Company[]> {
+  const { data, error } = await supabase
+    .from('company_access')
+    .select(`
+      company:companies(*)
+    `)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+
+  // Extract and flatten the company objects
+  const companies = (data || [])
+    .map(item => item.company as unknown as Company)
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return companies;
+}
+
+// Unified fetch function based on role
+async function fetchCompanies(userId: string, isAdmin: boolean): Promise<Company[]> {
+  if (isAdmin) {
+    return fetchAdminCompanies(userId);
+  } else {
+    return fetchClientCompanies(userId);
+  }
+}
+
+export function useCompanies(userId?: string, isAdmin: boolean = true) {
   const queryClient = useQueryClient();
 
   // Query for fetching companies
@@ -26,8 +55,8 @@ export function useCompanies(userId?: string) {
     error: queryError,
     refetch: refreshCompanies,
   } = useQuery({
-    queryKey: queryKeys.companies.list(userId || ''),
-    queryFn: () => fetchCompanies(userId!),
+    queryKey: [...queryKeys.companies.list(userId || ''), isAdmin ? 'admin' : 'client'],
+    queryFn: () => fetchCompanies(userId!, isAdmin),
     enabled: !!userId,
   });
 
@@ -37,49 +66,76 @@ export function useCompanies(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    const channel = supabase
-      .channel('companies_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'companies',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          // Handle real-time updates efficiently
-          queryClient.setQueryData<Company[]>(
-            queryKeys.companies.list(userId),
-            (oldData) => {
-              if (!oldData) return oldData;
+    const queryKey = [...queryKeys.companies.list(userId), isAdmin ? 'admin' : 'client'];
 
-              if (payload.eventType === 'DELETE') {
-                return oldData.filter(c => c.id !== payload.old.id);
-              }
-              if (payload.eventType === 'INSERT') {
-                const newCompany = payload.new as Company;
-                // Insert in sorted order by name
-                const insertIndex = oldData.findIndex(c => c.name.localeCompare(newCompany.name) > 0);
-                if (insertIndex === -1) return [...oldData, newCompany];
-                return [...oldData.slice(0, insertIndex), newCompany, ...oldData.slice(insertIndex)];
-              }
-              if (payload.eventType === 'UPDATE') {
-                return oldData
-                  .map(c => c.id === payload.new.id ? payload.new as Company : c)
-                  .sort((a, b) => a.name.localeCompare(b.name));
-              }
-              return oldData;
-            }
-          );
-        }
-      )
-      .subscribe();
+    if (isAdmin) {
+      // Admin: Listen to changes on companies they own
+      const channel = supabase
+        .channel('companies_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'companies',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            // Handle real-time updates efficiently
+            queryClient.setQueryData<Company[]>(
+              queryKey,
+              (oldData) => {
+                if (!oldData) return oldData;
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, queryClient]);
+                if (payload.eventType === 'DELETE') {
+                  return oldData.filter(c => c.id !== payload.old.id);
+                }
+                if (payload.eventType === 'INSERT') {
+                  const newCompany = payload.new as Company;
+                  // Insert in sorted order by name
+                  const insertIndex = oldData.findIndex(c => c.name.localeCompare(newCompany.name) > 0);
+                  if (insertIndex === -1) return [...oldData, newCompany];
+                  return [...oldData.slice(0, insertIndex), newCompany, ...oldData.slice(insertIndex)];
+                }
+                if (payload.eventType === 'UPDATE') {
+                  return oldData
+                    .map(c => c.id === payload.new.id ? payload.new as Company : c)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                }
+                return oldData;
+              }
+            );
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } else {
+      // Client: Listen to changes on company_access for this user
+      const channel = supabase
+        .channel('company_access_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'company_access',
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            // Refetch companies when access changes
+            refreshCompanies();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userId, isAdmin, queryClient, refreshCompanies]);
 
   // Create company mutation with optimistic update
   const createMutation = useMutation({
@@ -94,13 +150,13 @@ export function useCompanies(userId?: string) {
       return data as Company;
     },
     onMutate: async (newCompany) => {
+      const queryKey = [...queryKeys.companies.list(userId || ''), isAdmin ? 'admin' : 'client'];
+
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.companies.list(userId || '') });
+      await queryClient.cancelQueries({ queryKey });
 
       // Snapshot the previous value
-      const previousCompanies = queryClient.getQueryData<Company[]>(
-        queryKeys.companies.list(userId || '')
-      );
+      const previousCompanies = queryClient.getQueryData<Company[]>(queryKey);
 
       // Optimistically update with temporary ID
       const optimisticCompany: Company = {
@@ -114,7 +170,7 @@ export function useCompanies(userId?: string) {
       };
 
       queryClient.setQueryData<Company[]>(
-        queryKeys.companies.list(userId || ''),
+        queryKey,
         (old) => {
           if (!old) return [optimisticCompany];
           const insertIndex = old.findIndex(c => c.name.localeCompare(optimisticCompany.name) > 0);
@@ -123,13 +179,13 @@ export function useCompanies(userId?: string) {
         }
       );
 
-      return { previousCompanies };
+      return { previousCompanies, queryKey };
     },
     onError: (_err, _newCompany, context) => {
       // Rollback on error
-      if (context?.previousCompanies) {
+      if (context?.previousCompanies && context?.queryKey) {
         queryClient.setQueryData(
-          queryKeys.companies.list(userId || ''),
+          context.queryKey,
           context.previousCompanies
         );
       }
@@ -150,23 +206,23 @@ export function useCompanies(userId?: string) {
       if (error) throw error;
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.companies.list(userId || '') });
+      const queryKey = [...queryKeys.companies.list(userId || ''), isAdmin ? 'admin' : 'client'];
 
-      const previousCompanies = queryClient.getQueryData<Company[]>(
-        queryKeys.companies.list(userId || '')
-      );
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousCompanies = queryClient.getQueryData<Company[]>(queryKey);
 
       queryClient.setQueryData<Company[]>(
-        queryKeys.companies.list(userId || ''),
+        queryKey,
         (old) => old?.map(c => c.id === id ? { ...c, ...updates } : c).sort((a, b) => a.name.localeCompare(b.name))
       );
 
-      return { previousCompanies };
+      return { previousCompanies, queryKey };
     },
     onError: (_err, _vars, context) => {
-      if (context?.previousCompanies) {
+      if (context?.previousCompanies && context?.queryKey) {
         queryClient.setQueryData(
-          queryKeys.companies.list(userId || ''),
+          context.queryKey,
           context.previousCompanies
         );
       }
@@ -184,24 +240,24 @@ export function useCompanies(userId?: string) {
       if (error) throw error;
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.companies.list(userId || '') });
+      const queryKey = [...queryKeys.companies.list(userId || ''), isAdmin ? 'admin' : 'client'];
 
-      const previousCompanies = queryClient.getQueryData<Company[]>(
-        queryKeys.companies.list(userId || '')
-      );
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousCompanies = queryClient.getQueryData<Company[]>(queryKey);
 
       // Optimistically remove the company
       queryClient.setQueryData<Company[]>(
-        queryKeys.companies.list(userId || ''),
+        queryKey,
         (old) => old?.filter(c => c.id !== id)
       );
 
-      return { previousCompanies };
+      return { previousCompanies, queryKey };
     },
     onError: (_err, _id, context) => {
-      if (context?.previousCompanies) {
+      if (context?.previousCompanies && context?.queryKey) {
         queryClient.setQueryData(
-          queryKeys.companies.list(userId || ''),
+          context.queryKey,
           context.previousCompanies
         );
       }
