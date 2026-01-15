@@ -1155,7 +1155,14 @@ export function generateHTMLExport(summary: CompanySummary, extraData?: Partial<
           ` : data.topWorkflows?.length ? `
             <div class="cards-grid">
               ${data.topWorkflows.slice(0, 12).map((wf: any) => `
-                <div class="profile-card">
+                <div class="profile-card popover-trigger" data-popover-type="workflow" data-popover="${escapeHtmlAttribute(JSON.stringify({
+                  name: wf.name,
+                  count: wf.mentions || 0,
+                  frequency: wf.frequency,
+                  steps: wf.steps,
+                  participants: wf.participants,
+                  systems: wf.systems
+                }))}">
                   <div class="profile-card-header">
                     <div class="profile-icon-box blue">${icons.workflow}</div>
                     <div>
