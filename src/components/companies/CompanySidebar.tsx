@@ -44,12 +44,12 @@ export function CompanySidebar({
   }, [interviews]);
 
   return (
-    <aside className="w-64 bg-white border border-slate-200 rounded-xl flex flex-col overflow-hidden">
+    <aside className="w-64 bg-white border border-slate-200/60 rounded-2xl flex flex-col overflow-hidden shadow-soft">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200">
+      <div className="p-4 border-b border-slate-100">
         <button
           onClick={onCreateCompany}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm font-medium shadow-sm"
         >
           <Plus className="w-4 h-4" />
           New Company
@@ -57,7 +57,7 @@ export function CompanySidebar({
       </div>
 
       {/* Folder List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
         {/* All Interviews */}
         <SpecialFolder
           type="all"
@@ -77,7 +77,7 @@ export function CompanySidebar({
         {/* Divider */}
         {companies.length > 0 && (
           <div className="py-2">
-            <div className="border-t border-slate-200" />
+            <div className="border-t border-slate-100" />
           </div>
         )}
 
@@ -97,7 +97,7 @@ export function CompanySidebar({
         {/* Empty state */}
         {companies.length === 0 && (
           <div className="text-center py-6 px-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-400">
               Create your first company folder to organize interviews
             </p>
           </div>
@@ -105,8 +105,8 @@ export function CompanySidebar({
       </div>
 
       {/* Footer hint */}
-      <div className="p-3 border-t border-slate-200 bg-slate-50">
-        <p className="text-xs text-slate-500 text-center">
+      <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+        <p className="text-xs text-slate-400 text-center">
           Drag interviews to organize
         </p>
       </div>

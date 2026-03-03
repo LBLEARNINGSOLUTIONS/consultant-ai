@@ -139,33 +139,31 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
   return (
     <div className="space-y-4">
       {/* Mode Tabs */}
-      <div className="border-b border-slate-200">
-        <div className="flex space-x-4 -mb-px">
-          <button
-            onClick={() => setMode('files')}
-            className={cn(
-              'py-3 px-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
-              mode === 'files'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            )}
-          >
-            <Upload className="w-4 h-4" />
-            Upload Files
-          </button>
-          <button
-            onClick={() => setMode('paste')}
-            className={cn(
-              'py-3 px-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
-              mode === 'paste'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            )}
-          >
-            <Type className="w-4 h-4" />
-            Paste Text
-          </button>
-        </div>
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+        <button
+          onClick={() => setMode('files')}
+          className={cn(
+            'py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center gap-2',
+            mode === 'files'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          <Upload className="w-4 h-4" />
+          Upload Files
+        </button>
+        <button
+          onClick={() => setMode('paste')}
+          className={cn(
+            'py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center gap-2',
+            mode === 'paste'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          <Type className="w-4 h-4" />
+          Paste Text
+        </button>
       </div>
 
       {/* File Upload Mode */}
@@ -194,7 +192,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
             />
 
             <div className="flex flex-col items-center gap-3">
-              <div className="bg-indigo-100 p-3 rounded-full">
+              <div className="bg-gradient-to-br from-indigo-100 to-violet-100 p-3.5 rounded-2xl">
                 <Upload className="w-6 h-6 text-indigo-600" />
               </div>
 
@@ -208,7 +206,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                     browse
                   </button>
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Supports .txt files up to 10MB • Max {maxFiles} files
                 </p>
               </div>
@@ -219,7 +217,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
 
       {/* Paste Text Mode */}
       {mode === 'paste' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-soft">
           <div className="space-y-4">
             {/* Title Input */}
             <div>
@@ -232,7 +230,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                 value={transcriptTitle}
                 onChange={(e) => setTranscriptTitle(e.target.value)}
                 placeholder="e.g., Interview with Sarah - Customer Success"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                 disabled={uploading}
               />
             </div>
@@ -250,7 +248,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                     type="date"
                     value={interviewDate}
                     onChange={(e) => setInterviewDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                     disabled={uploading}
                   />
                 </div>
@@ -264,7 +262,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                     value={intervieweeName}
                     onChange={(e) => setIntervieweeName(e.target.value)}
                     placeholder="John Smith"
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                     disabled={uploading}
                   />
                 </div>
@@ -278,7 +276,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                     value={intervieweeRole}
                     onChange={(e) => setIntervieweeRole(e.target.value)}
                     placeholder="Operations Manager"
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                     disabled={uploading}
                   />
                 </div>
@@ -292,7 +290,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                     placeholder="Operations"
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                     disabled={uploading}
                   />
                 </div>
@@ -310,7 +308,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder="Paste your interview transcript here..."
                 rows={12}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm resize-y"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-mono text-sm resize-y transition-colors"
                 disabled={uploading}
               />
               <p className="text-xs text-slate-500 mt-2">
@@ -323,10 +321,10 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
               onClick={handlePasteUpload}
               disabled={uploading || pastedText.trim().length === 0}
               className={cn(
-                'w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors',
+                'w-full py-3 px-4 rounded-xl font-medium text-sm transition-all shadow-sm',
                 uploading || pastedText.trim().length === 0
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800'
               )}
             >
               {uploading ? 'Processing...' : 'Analyze Transcript'}
@@ -337,7 +335,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
 
       {/* Selected Files List */}
       {mode === 'files' && selectedFiles.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-soft">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-900">
               Selected Files ({selectedFiles.length})
@@ -356,7 +354,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
             {selectedFiles.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/60"
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -402,7 +400,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                   type="date"
                   value={interviewDate}
                   onChange={(e) => setInterviewDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                   disabled={uploading}
                 />
               </div>
@@ -416,7 +414,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                   value={intervieweeName}
                   onChange={(e) => setIntervieweeName(e.target.value)}
                   placeholder="John Smith"
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                   disabled={uploading}
                 />
               </div>
@@ -430,7 +428,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                   value={intervieweeRole}
                   onChange={(e) => setIntervieweeRole(e.target.value)}
                   placeholder="Operations Manager"
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                   disabled={uploading}
                 />
               </div>
@@ -444,7 +442,7 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                   placeholder="Operations"
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
                   disabled={uploading}
                 />
               </div>
@@ -456,10 +454,10 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
             onClick={handleUpload}
             disabled={uploading || selectedFiles.length === 0}
             className={cn(
-              'w-full mt-4 py-2 px-4 rounded-lg font-medium text-sm transition-colors',
+              'w-full mt-4 py-2.5 px-4 rounded-xl font-medium text-sm transition-all shadow-sm',
               uploading || selectedFiles.length === 0
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                : 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800'
             )}
           >
             {uploading ? 'Processing...' : `Upload & Analyze ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`}

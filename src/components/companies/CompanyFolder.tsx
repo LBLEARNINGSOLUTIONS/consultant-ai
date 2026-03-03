@@ -45,9 +45,9 @@ export function CompanyFolder({
     <div
       ref={setNodeRef}
       className={`
-        group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-100'}
-        ${isOver ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50 scale-105' : ''}
+        group relative flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all
+        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}
+        ${isOver ? 'ring-2 ring-indigo-400 ring-offset-2 bg-indigo-50 scale-[1.02]' : ''}
       `}
       onClick={onClick}
     >
@@ -94,7 +94,7 @@ export function CompanyFolder({
 
         {/* Dropdown menu */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 min-w-[120px]">
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-soft-lg border border-slate-200/60 py-1 z-50 min-w-[120px]">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -152,9 +152,9 @@ export function SpecialFolder({
     <div
       ref={!isAll ? setNodeRef : undefined}
       className={`
-        flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-100'}
-        ${isOver && !isAll ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50 scale-105' : ''}
+        flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all
+        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}
+        ${isOver && !isAll ? 'ring-2 ring-indigo-400 ring-offset-2 bg-indigo-50 scale-[1.02]' : ''}
       `}
       onClick={onClick}
     >

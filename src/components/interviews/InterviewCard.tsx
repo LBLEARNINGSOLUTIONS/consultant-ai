@@ -48,7 +48,7 @@ function DraggableWrapper({ id, children }: { id: string; children: React.ReactN
         role="button"
         aria-label="Drag to move interview to a company folder"
         tabIndex={0}
-        className="absolute top-2 left-2 p-1 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded z-10"
+        className="absolute top-3 left-2 p-1 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 hover:bg-slate-100 rounded-lg z-10 transition-colors"
         title="Drag to move to a company folder"
       >
         <GripVertical className="w-4 h-4" aria-hidden="true" />
@@ -115,10 +115,10 @@ export const InterviewCard = memo(function InterviewCard({
   return (
     <DraggableWrapper id={interview.id}>
       <div
-        className={`bg-white rounded-xl border-2 p-6 pl-10 hover:shadow-lg transition-all ${
+        className={`bg-white rounded-2xl border p-6 pl-10 transition-all ${
           isSelected
-            ? 'border-green-500 ring-2 ring-green-200'
-            : 'border-slate-200'
+            ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-glow-green'
+            : 'border-slate-200/60 shadow-soft hover:shadow-soft-lg hover:border-slate-300/60'
         }`}
       >
         <div className="flex items-start justify-between mb-4">
@@ -234,14 +234,14 @@ export const InterviewCard = memo(function InterviewCard({
           )}
 
           {interview.analysis_status === 'failed' && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+            <div className="mt-2 p-3 bg-red-50 border border-red-200/60 rounded-xl">
               {interview.error_message && (
                 <p className="text-xs text-red-700 mb-2">{interview.error_message}</p>
               )}
               <button
                 onClick={onRetryAnalysis}
                 disabled={isAnalyzing}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
                 {isAnalyzing ? 'Retrying...' : 'Retry Analysis'}
@@ -251,7 +251,7 @@ export const InterviewCard = memo(function InterviewCard({
 
           {interview.analysis_status === 'completed' && (
             <>
-              <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
+              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <span className="text-slate-600">Workflows:</span>{' '}
                   <span className="font-semibold text-slate-900">
@@ -281,7 +281,7 @@ export const InterviewCard = memo(function InterviewCard({
               <button
                 onClick={onView}
                 onMouseEnter={preloadAnalysisViewer}
-                className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm font-medium shadow-sm"
               >
                 <Eye className="w-4 h-4" />
                 View Analysis

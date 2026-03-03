@@ -13,7 +13,7 @@ import { CreateCompanyModal } from './components/companies/CreateCompanyModal';
 import { InterviewSearchBar } from './components/filters/InterviewSearchBar';
 import { UploadResult } from './services/uploadService';
 import { Interview, CompanySummary, Company } from './types/database';
-import { FileText, LogOut, Plus, BarChart3, PieChart, Merge, Shield } from 'lucide-react';
+import { FileText, LogOut, BarChart3, PieChart, Merge, Shield, CheckCircle2, Clock, AlertCircle, Upload } from 'lucide-react';
 import { VirtualizedInterviewGrid } from './components/interviews/VirtualizedInterviewGrid';
 import { SummaryCard } from './components/summaries/SummaryCard';
 import { SummaryStatsModal } from './components/summary/SummaryStatsModal';
@@ -357,26 +357,32 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 rounded-lg p-2">
+            <div className="bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl p-2 shadow-sm">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900">
-              Consultant<span className="text-indigo-600">AI</span>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Consultant<span className="text-gradient">AI</span>
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-slate-900">{profile?.name || user.email}</p>
-              <p className="text-xs text-slate-500">{profile?.email || user.email}</p>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-medium text-slate-900">{profile?.name || user.email}</p>
+                <p className="text-xs text-slate-500">{profile?.email || user.email}</p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm">
+                {(profile?.name || user.email || '?')[0].toUpperCase()}
+              </div>
             </div>
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
             {isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(true)}
-                className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors"
                 title="Admin Panel"
               >
                 <Shield className="w-5 h-5" />
@@ -384,7 +390,7 @@ function App() {
             )}
             <button
               onClick={() => signOut()}
-              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               title="Sign out"
             >
               <LogOut className="w-5 h-5" />
@@ -396,45 +402,54 @@ function App() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* View Mode Tabs */}
-        <div className="mb-6 border-b border-slate-200">
-          <div className="flex space-x-8 -mb-px">
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200/60 shadow-sm">
             <button
               onClick={() => setViewMode('interviews')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
                 viewMode === 'interviews'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <FileText className="w-4 h-4 inline mr-2" />
+              <FileText className="w-4 h-4" />
               Interviews
-              <span className="ml-2 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
+              <span className={`px-1.5 py-0.5 rounded-md text-xs font-semibold ${
+                viewMode === 'interviews'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
                 {interviews.length}
               </span>
             </button>
             <button
               onClick={() => setViewMode('summaries')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
                 viewMode === 'summaries'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <BarChart3 className="w-4 h-4 inline mr-2" />
-              Company Summaries
-              <span className="ml-2 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
+              <BarChart3 className="w-4 h-4" />
+              Summaries
+              <span className={`px-1.5 py-0.5 rounded-md text-xs font-semibold ${
+                viewMode === 'summaries'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
                 {summaries.length}
               </span>
             </button>
             <button
               onClick={() => setViewMode('analytics')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+              onMouseEnter={preloadAnalyticsDashboard}
+              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
                 viewMode === 'analytics'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <PieChart className="w-4 h-4 inline mr-2" />
+              <PieChart className="w-4 h-4" />
               Analytics
             </button>
           </div>
@@ -444,17 +459,17 @@ function App() {
         {viewMode === 'interviews' && (
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Interview Transcripts</h2>
-              <p className="text-slate-600 mt-1">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Interview Transcripts</h2>
+              <p className="text-slate-500 mt-1 text-sm">
                 Upload and analyze interview transcripts with AI
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {selectedInterviewIds.size >= 2 && (
                 <button
                   onClick={handleMergeInterviews}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-medium text-sm shadow-sm"
                 >
                   <Merge className="w-4 h-4" />
                   Merge ({selectedInterviewIds.size})
@@ -464,7 +479,7 @@ function App() {
                 <button
                   onClick={handleGenerateSummary}
                   disabled={isGeneratingSummary}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                   <BarChart3 className="w-4 h-4" />
                   {isGeneratingSummary ? 'Generating...' : `Generate Summary (${selectedInterviewIds.size})`}
@@ -472,9 +487,9 @@ function App() {
               )}
               <button
                 onClick={() => setShowUpload(!showUpload)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all font-medium text-sm shadow-sm"
               >
-                <Plus className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 Upload Transcripts
               </button>
             </div>
@@ -484,8 +499,8 @@ function App() {
         {viewMode === 'summaries' && (
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Company Summaries</h2>
-              <p className="text-slate-600 mt-1">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Company Summaries</h2>
+              <p className="text-slate-500 mt-1 text-sm">
                 Aggregated insights from multiple interviews
               </p>
             </div>
@@ -545,14 +560,14 @@ function App() {
                     ))}
                   </div>
                 ) : filteredInterviews.length === 0 ? (
-                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-                      <FileText className="w-8 h-8 text-slate-400" />
+                  <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center shadow-soft">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl mb-5">
+                      <FileText className="w-7 h-7 text-slate-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">
                       {interviews.length === 0 ? 'No interviews yet' : 'No interviews in this folder'}
                     </h3>
-                    <p className="text-slate-600 mb-6">
+                    <p className="text-slate-500 mb-6 text-sm max-w-sm mx-auto">
                       {interviews.length === 0
                         ? 'Upload your first interview transcript to get started with AI analysis'
                         : 'Drag interviews here or select a different folder'}
@@ -560,9 +575,9 @@ function App() {
                     {interviews.length === 0 && (
                       <button
                         onClick={() => setShowUpload(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all font-medium text-sm shadow-sm"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Upload className="w-4 h-4" />
                         Upload Transcript
                       </button>
                     )}
@@ -595,19 +610,19 @@ function App() {
             ))}
           </div>
         ) : viewMode === 'summaries' && summaries.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-              <BarChart3 className="w-8 h-8 text-slate-400" />
+          <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center shadow-soft">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl mb-5">
+              <BarChart3 className="w-7 h-7 text-slate-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               No company summaries yet
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="text-slate-500 mb-6 text-sm max-w-sm mx-auto">
               Select multiple completed interviews and generate a summary to see aggregated insights
             </p>
             <button
               onClick={() => setViewMode('interviews')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all font-medium text-sm shadow-sm"
             >
               <FileText className="w-4 h-4" />
               View Interviews
@@ -647,22 +662,50 @@ function App() {
 
         {/* Stats Summary */}
         {viewMode === 'interviews' && interviewStats.total > 0 && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600 mb-1">Total Interviews</p>
-              <p className="text-2xl font-bold text-slate-900">{interviewStats.total}</p>
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <FileText className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Total</p>
+                  <p className="text-xl font-bold text-slate-900">{interviewStats.total}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600 mb-1">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{interviewStats.completed}</p>
+            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Completed</p>
+                  <p className="text-xl font-bold text-emerald-600">{interviewStats.completed}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600 mb-1">Analyzing</p>
-              <p className="text-2xl font-bold text-yellow-600">{interviewStats.analyzing}</p>
+            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-50 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Analyzing</p>
+                  <p className="text-xl font-bold text-amber-600">{interviewStats.analyzing}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600 mb-1">Failed</p>
-              <p className="text-2xl font-bold text-red-600">{interviewStats.failed}</p>
+            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-50 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Failed</p>
+                  <p className="text-xl font-bold text-red-500">{interviewStats.failed}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}

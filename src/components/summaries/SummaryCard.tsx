@@ -25,7 +25,7 @@ export const SummaryCard = memo(function SummaryCard({
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-soft hover:shadow-soft-lg transition-all cursor-pointer"
       onClick={onView}
     >
       <div className="flex items-start justify-between mb-4">
@@ -40,7 +40,7 @@ export const SummaryCard = memo(function SummaryCard({
             e.stopPropagation();
             onDelete();
           }}
-          className="ml-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          className="ml-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           title="Delete summary"
         >
           <Trash2 className="w-4 h-4" />
@@ -58,7 +58,7 @@ export const SummaryCard = memo(function SummaryCard({
               e.stopPropagation();
               onEditStats();
             }}
-            className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs w-full text-left hover:bg-slate-50 rounded-lg -mx-2 px-2 py-2 transition-colors"
+            className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs w-full text-left hover:bg-slate-50 rounded-xl -mx-2 px-2 py-2 transition-colors"
           >
             <div className="flex items-center gap-1">
               <FileText className="w-3 h-3 text-slate-400" />
@@ -94,7 +94,7 @@ export const SummaryCard = memo(function SummaryCard({
         <button
           onClick={onView}
           onMouseEnter={preloadCompanySummaryView}
-          className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all text-sm font-medium shadow-sm"
         >
           <Eye className="w-4 h-4" />
           View Summary
