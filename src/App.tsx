@@ -355,15 +355,15 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-30">
+    <div className="min-h-screen bg-gradient-mesh bg-slate-50">
+      {/* Header - Dark gradient */}
+      <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl p-2 shadow-sm">
+            <div className="animated-gradient rounded-xl p-2 shadow-lg shadow-indigo-500/20">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl font-bold text-white tracking-tight">
               Consultant<span className="text-gradient">AI</span>
             </h1>
           </div>
@@ -371,18 +371,18 @@ function App() {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-medium text-slate-900">{profile?.name || user.email}</p>
-                <p className="text-xs text-slate-500">{profile?.email || user.email}</p>
+                <p className="text-sm font-medium text-white">{profile?.name || user.email}</p>
+                <p className="text-xs text-indigo-300">{profile?.email || user.email}</p>
               </div>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-400 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-indigo-500/30 ring-2 ring-white/20">
                 {(profile?.name || user.email || '?')[0].toUpperCase()}
               </div>
             </div>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+            <div className="h-6 w-px bg-white/20 hidden sm:block" />
             {isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(true)}
-                className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors"
+                className="p-2 text-indigo-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
                 title="Admin Panel"
               >
                 <Shield className="w-5 h-5" />
@@ -390,7 +390,7 @@ function App() {
             )}
             <button
               onClick={() => signOut()}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              className="p-2 text-indigo-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
               title="Sign out"
             >
               <LogOut className="w-5 h-5" />
@@ -403,39 +403,39 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* View Mode Tabs */}
         <div className="mb-8">
-          <div className="inline-flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200/60 shadow-sm">
+          <div className="inline-flex items-center gap-1 p-1.5 bg-white rounded-2xl border border-slate-200/60 shadow-elevated">
             <button
               onClick={() => setViewMode('interviews')}
-              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              className={`flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm transition-all ${
                 viewMode === 'interviews'
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <FileText className="w-4 h-4" />
               Interviews
-              <span className={`px-1.5 py-0.5 rounded-md text-xs font-semibold ${
+              <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                 viewMode === 'interviews'
                   ? 'bg-white/20 text-white'
-                  : 'bg-slate-100 text-slate-500'
+                  : 'bg-indigo-100 text-indigo-600'
               }`}>
                 {interviews.length}
               </span>
             </button>
             <button
               onClick={() => setViewMode('summaries')}
-              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              className={`flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm transition-all ${
                 viewMode === 'summaries'
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
               Summaries
-              <span className={`px-1.5 py-0.5 rounded-md text-xs font-semibold ${
+              <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                 viewMode === 'summaries'
                   ? 'bg-white/20 text-white'
-                  : 'bg-slate-100 text-slate-500'
+                  : 'bg-indigo-100 text-indigo-600'
               }`}>
                 {summaries.length}
               </span>
@@ -443,10 +443,10 @@ function App() {
             <button
               onClick={() => setViewMode('analytics')}
               onMouseEnter={preloadAnalyticsDashboard}
-              className={`flex items-center gap-2 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              className={`flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm transition-all ${
                 viewMode === 'analytics'
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <PieChart className="w-4 h-4" />
@@ -560,22 +560,22 @@ function App() {
                     ))}
                   </div>
                 ) : filteredInterviews.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center shadow-soft">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl mb-5">
-                      <FileText className="w-7 h-7 text-slate-400" />
+                  <div className="bg-white rounded-2xl border border-slate-200/60 p-16 text-center shadow-card">
+                    <div className="inline-flex items-center justify-center w-20 h-20 animated-gradient rounded-3xl mb-6 shadow-lg shadow-indigo-500/20">
+                      <FileText className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    <h3 className="text-xl font-bold text-slate-900 mb-3">
                       {interviews.length === 0 ? 'No interviews yet' : 'No interviews in this folder'}
                     </h3>
-                    <p className="text-slate-500 mb-6 text-sm max-w-sm mx-auto">
+                    <p className="text-slate-500 mb-8 text-sm max-w-sm mx-auto leading-relaxed">
                       {interviews.length === 0
-                        ? 'Upload your first interview transcript to get started with AI analysis'
+                        ? 'Upload your first interview transcript to get started with AI-powered analysis'
                         : 'Drag interviews here or select a different folder'}
                     </p>
                     {interviews.length === 0 && (
                       <button
                         onClick={() => setShowUpload(true)}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all font-medium text-sm shadow-sm"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all font-semibold text-sm shadow-lg shadow-indigo-500/25"
                       >
                         <Upload className="w-4 h-4" />
                         Upload Transcript
@@ -610,19 +610,19 @@ function App() {
             ))}
           </div>
         ) : viewMode === 'summaries' && summaries.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center shadow-soft">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl mb-5">
-              <BarChart3 className="w-7 h-7 text-slate-400" />
+          <div className="bg-white rounded-2xl border border-slate-200/60 p-16 text-center shadow-card">
+            <div className="inline-flex items-center justify-center w-20 h-20 animated-gradient rounded-3xl mb-6 shadow-lg shadow-indigo-500/20">
+              <BarChart3 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            <h3 className="text-xl font-bold text-slate-900 mb-3">
               No company summaries yet
             </h3>
-            <p className="text-slate-500 mb-6 text-sm max-w-sm mx-auto">
+            <p className="text-slate-500 mb-8 text-sm max-w-sm mx-auto leading-relaxed">
               Select multiple completed interviews and generate a summary to see aggregated insights
             </p>
             <button
               onClick={() => setViewMode('interviews')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all font-medium text-sm shadow-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all font-semibold text-sm shadow-lg shadow-indigo-500/25"
             >
               <FileText className="w-4 h-4" />
               View Interviews
@@ -662,50 +662,42 @@ function App() {
 
         {/* Stats Summary */}
         {viewMode === 'interviews' && interviewStats.total > 0 && (
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-100 rounded-lg">
-                  <FileText className="w-4 h-4 text-slate-600" />
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="stat-card-indigo bg-white rounded-2xl border border-slate-200/60 p-5 shadow-card hover:shadow-card-hover transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 bg-indigo-100 rounded-xl">
+                  <FileText className="w-5 h-5 text-indigo-600" />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Total</p>
-                  <p className="text-xl font-bold text-slate-900">{interviewStats.total}</p>
-                </div>
+                <p className="text-sm text-slate-500 font-semibold uppercase tracking-wide">Total</p>
               </div>
+              <p className="text-3xl font-extrabold text-slate-900">{interviewStats.total}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 rounded-lg">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="stat-card-emerald bg-white rounded-2xl border border-slate-200/60 p-5 shadow-card hover:shadow-card-hover transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 bg-emerald-100 rounded-xl">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Completed</p>
-                  <p className="text-xl font-bold text-emerald-600">{interviewStats.completed}</p>
-                </div>
+                <p className="text-sm text-slate-500 font-semibold uppercase tracking-wide">Completed</p>
               </div>
+              <p className="text-3xl font-extrabold text-emerald-600">{interviewStats.completed}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-50 rounded-lg">
-                  <Clock className="w-4 h-4 text-amber-600" />
+            <div className="stat-card-amber bg-white rounded-2xl border border-slate-200/60 p-5 shadow-card hover:shadow-card-hover transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 bg-amber-100 rounded-xl">
+                  <Clock className="w-5 h-5 text-amber-600" />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Analyzing</p>
-                  <p className="text-xl font-bold text-amber-600">{interviewStats.analyzing}</p>
-                </div>
+                <p className="text-sm text-slate-500 font-semibold uppercase tracking-wide">Analyzing</p>
               </div>
+              <p className="text-3xl font-extrabold text-amber-600">{interviewStats.analyzing}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-soft">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-50 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-red-500" />
+            <div className="stat-card-red bg-white rounded-2xl border border-slate-200/60 p-5 shadow-card hover:shadow-card-hover transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 bg-red-100 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Failed</p>
-                  <p className="text-xl font-bold text-red-500">{interviewStats.failed}</p>
-                </div>
+                <p className="text-sm text-slate-500 font-semibold uppercase tracking-wide">Failed</p>
               </div>
+              <p className="text-3xl font-extrabold text-red-500">{interviewStats.failed}</p>
             </div>
           </div>
         )}

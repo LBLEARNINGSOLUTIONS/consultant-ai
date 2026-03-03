@@ -118,7 +118,12 @@ export const InterviewCard = memo(function InterviewCard({
         className={`bg-white rounded-2xl border p-6 pl-10 transition-all ${
           isSelected
             ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-glow-green'
-            : 'border-slate-200/60 shadow-soft hover:shadow-soft-lg hover:border-slate-300/60'
+            : 'border-slate-200/60 shadow-card hover:shadow-card-hover hover:border-slate-300/60'
+        } ${
+          interview.analysis_status === 'completed' ? 'card-accent-green' :
+          interview.analysis_status === 'analyzing' ? 'card-accent-yellow' :
+          interview.analysis_status === 'failed' ? 'card-accent-red' :
+          'card-accent-gray'
         }`}
       >
         <div className="flex items-start justify-between mb-4">

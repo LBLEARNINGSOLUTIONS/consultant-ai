@@ -93,7 +93,7 @@ export function InterviewSearchBar({
       <div className="flex items-center gap-3">
         {/* Search input */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             ref={searchInputRef}
             type="search"
@@ -102,13 +102,13 @@ export function InterviewSearchBar({
             value={localSearch}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search interviews by title or content... (Cmd+K)"
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200/60 rounded-2xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 shadow-card transition-all"
           />
           {localSearch && (
             <button
               onClick={handleClearSearch}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -122,17 +122,17 @@ export function InterviewSearchBar({
           aria-controls="filter-panel"
           aria-label={hasActiveFilters ? `Filters (${resultCount} of ${totalCount} results)` : 'Filters'}
           className={`
-            flex items-center gap-2 px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors
+            flex items-center gap-2 px-5 py-3 border rounded-2xl text-sm font-semibold transition-all
             ${showFilters || hasActiveFilters
-              ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm'
+              : 'bg-white border-slate-200/60 text-slate-600 hover:bg-slate-50 shadow-card hover:shadow-card-hover'
             }
           `}
         >
           <Filter className="w-4 h-4" aria-hidden="true" />
           Filters
           {hasActiveFilters && (
-            <span className="bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full" aria-hidden="true">
+            <span className="bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold" aria-hidden="true">
               !
             </span>
           )}
@@ -149,7 +149,7 @@ export function InterviewSearchBar({
           id="filter-panel"
           role="region"
           aria-label="Filter options"
-          className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200"
+          className="flex flex-wrap items-center gap-3 p-5 bg-white rounded-2xl border border-slate-200/60 shadow-card"
         >
           {/* Status filter */}
           <FilterDropdown

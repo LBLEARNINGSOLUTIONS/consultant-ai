@@ -45,19 +45,19 @@ export function CompanyFolder({
     <div
       ref={setNodeRef}
       className={`
-        group relative flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all
-        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}
-        ${isOver ? 'ring-2 ring-indigo-400 ring-offset-2 bg-indigo-50 scale-[1.02]' : ''}
+        group relative flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all
+        ${isSelected ? 'bg-indigo-500/20 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}
+        ${isOver ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 bg-indigo-500/20 scale-[1.02]' : ''}
       `}
       onClick={onClick}
     >
       {/* Folder icon with color indicator */}
       <div className="relative flex-shrink-0">
         <FolderIcon
-          className={`w-5 h-5 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}
+          className={`w-5 h-5 ${isSelected ? 'text-indigo-300' : 'text-slate-500'}`}
         />
         <div
-          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-800"
           style={{ backgroundColor: company.color }}
         />
       </div>
@@ -70,8 +70,8 @@ export function CompanyFolder({
       {/* Interview count badge */}
       <span
         className={`
-          text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center
-          ${isSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-600'}
+          text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center font-semibold
+          ${isSelected ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/10 text-slate-400'}
         `}
       >
         {count}
@@ -86,22 +86,22 @@ export function CompanyFolder({
           }}
           className={`
             p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
-            hover:bg-slate-200
+            hover:bg-white/10
           `}
         >
-          <MoreVertical className="w-4 h-4 text-slate-500" />
+          <MoreVertical className="w-4 h-4 text-slate-400" />
         </button>
 
         {/* Dropdown menu */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-soft-lg border border-slate-200/60 py-1 z-50 min-w-[120px]">
+          <div className="absolute right-0 top-full mt-1 bg-slate-800 rounded-xl shadow-elevated border border-white/10 py-1 z-50 min-w-[120px]">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(false);
                 onEdit(company);
               }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-300 hover:bg-white/10 hover:text-white"
             >
               <Edit2 className="w-4 h-4" />
               Edit
@@ -112,7 +112,7 @@ export function CompanyFolder({
                 setShowMenu(false);
                 onDelete(company);
               }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
             >
               <Trash2 className="w-4 h-4" />
               Delete
@@ -152,22 +152,22 @@ export function SpecialFolder({
     <div
       ref={!isAll ? setNodeRef : undefined}
       className={`
-        flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all
-        ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}
-        ${isOver && !isAll ? 'ring-2 ring-indigo-400 ring-offset-2 bg-indigo-50 scale-[1.02]' : ''}
+        flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all
+        ${isSelected ? 'bg-indigo-500/20 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}
+        ${isOver && !isAll ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 bg-indigo-500/20 scale-[1.02]' : ''}
       `}
       onClick={onClick}
     >
       <FolderIcon
-        className={`w-5 h-5 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}
+        className={`w-5 h-5 ${isSelected ? 'text-indigo-300' : 'text-slate-500'}`}
       />
       <span className="flex-1 text-sm font-medium">
         {isAll ? 'All Interviews' : 'Unassigned'}
       </span>
       <span
         className={`
-          text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center
-          ${isSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-600'}
+          text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center font-semibold
+          ${isSelected ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/10 text-slate-400'}
         `}
       >
         {count}

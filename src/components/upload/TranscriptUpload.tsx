@@ -172,10 +172,10 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
           {/* Drag & Drop Zone */}
           <div
             className={cn(
-              'border-2 border-dashed rounded-xl p-8 text-center transition-colors',
+              'border-2 border-dashed rounded-2xl p-10 text-center transition-all',
               dragActive
-                ? 'border-indigo-500 bg-indigo-50'
-                : 'border-slate-300 bg-slate-50 hover:border-indigo-400'
+                ? 'border-indigo-500 bg-indigo-50 scale-[1.01] shadow-glow-indigo'
+                : 'border-slate-300 bg-gradient-to-b from-white to-slate-50 hover:border-indigo-400 hover:shadow-card'
             )}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -191,22 +191,22 @@ export function TranscriptUpload({ onUploadComplete, maxFiles = 10 }: Transcript
               className="hidden"
             />
 
-            <div className="flex flex-col items-center gap-3">
-              <div className="bg-gradient-to-br from-indigo-100 to-violet-100 p-3.5 rounded-2xl">
-                <Upload className="w-6 h-6 text-indigo-600" />
+            <div className="flex flex-col items-center gap-4">
+              <div className="animated-gradient p-4 rounded-2xl shadow-lg shadow-indigo-500/20">
+                <Upload className="w-7 h-7 text-white" />
               </div>
 
               <div>
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-base font-semibold text-slate-900">
                   Drop interview transcripts here or{' '}
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-indigo-600 hover:text-indigo-700 font-semibold"
+                    className="text-indigo-600 hover:text-indigo-700 font-bold underline underline-offset-2"
                   >
-                    browse
+                    browse files
                   </button>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-2">
                   Supports .txt files up to 10MB • Max {maxFiles} files
                 </p>
               </div>

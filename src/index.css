@@ -31,6 +31,23 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400/80;
   }
+
+  /* Dark scrollbar for dark containers */
+  .scrollbar-dark::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/30;
+  }
 }
 
 /* Shimmer animation for skeleton loaders */
@@ -119,12 +136,19 @@
 /* Gradient text utility */
 .text-gradient {
   @apply bg-clip-text text-transparent;
-  background-image: linear-gradient(135deg, theme('colors.indigo.600'), theme('colors.violet.600'));
+  background-image: linear-gradient(135deg, theme('colors.indigo.400'), theme('colors.violet.400'));
 }
 
 /* Glass effect */
 .glass {
   @apply bg-white/80 backdrop-blur-xl border border-white/20;
+}
+
+/* Dark glass effect for dark headers */
+.glass-dark {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* Subtle noise texture overlay */
@@ -170,4 +194,55 @@
   mask-composite: exclude;
   -webkit-mask-composite: xor;
   pointer-events: none;
+}
+
+/* Card with left accent border */
+.card-accent-green {
+  border-left: 4px solid theme('colors.emerald.500');
+}
+
+.card-accent-yellow {
+  border-left: 4px solid theme('colors.amber.500');
+}
+
+.card-accent-red {
+  border-left: 4px solid theme('colors.red.500');
+}
+
+.card-accent-gray {
+  border-left: 4px solid theme('colors.slate.300');
+}
+
+/* Sidebar dark theme */
+.sidebar-dark {
+  background: linear-gradient(180deg, theme('colors.slate.900') 0%, theme('colors.slate.800') 100%);
+}
+
+/* Animated gradient background for hero sections */
+.animated-gradient {
+  background: linear-gradient(-45deg, theme('colors.indigo.600'), theme('colors.violet.600'), theme('colors.indigo.700'), theme('colors.purple.600'));
+  background-size: 400% 400%;
+  animation: gradient 8s ease infinite;
+}
+
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Stat card colored tops */
+.stat-card-emerald {
+  border-top: 3px solid theme('colors.emerald.500');
+}
+
+.stat-card-amber {
+  border-top: 3px solid theme('colors.amber.500');
+}
+
+.stat-card-red {
+  border-top: 3px solid theme('colors.red.500');
+}
+
+.stat-card-indigo {
+  border-top: 3px solid theme('colors.indigo.500');
 }
