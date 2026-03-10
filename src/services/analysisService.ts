@@ -1,4 +1,4 @@
-import { anthropic, DEFAULT_MODEL, MAX_TOKENS, DEFAULT_TEMPERATURE } from '../lib/anthropic';
+import { callAnalyzeFunction } from '../lib/anthropic';
 import { InterviewAnalysis, ClaudeAnalysisResponse, CompanySummaryData } from '../types/analysis';
 import { aggregateAnalyses } from '../utils/analysisHelpers';
 import { nanoid } from 'nanoid';
@@ -98,7 +98,27 @@ Return your analysis as strictly valid JSON matching this exact schema:
 Be thorough but concise. Focus on actionable insights. Generate unique IDs for each item. For recommendations, synthesize the pain points, training gaps, and handoff risks into 3-7 prioritized, actionable improvement suggestions.`;
 
 /**
- * Analyze a single interview transcript using Claude AI
+ * Parse Claude's response text into clean JSON
+ */
+function extractJson(text: string): string {
+  let jsonText = text.trim();
+
+  if (jsonText.startsWith('```json')) {
+    jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+  } else if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
+  }
+
+  const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    jsonText = jsonMatch[0];
+  }
+
+  return jsonText;
+}
+
+/**
+ * Analyze a single interview transcript using Claude AI via Edge Function
  */
 export async function analyzeTranscript(
   transcript: string
@@ -111,23 +131,16 @@ export async function analyzeTranscript(
   }
 
   try {
-    const message = await anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: MAX_TOKENS,
-      temperature: DEFAULT_TEMPERATURE,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Analyze this interview transcript and extract structured insights.
+    const message = await callAnalyzeFunction({
+      transcript: `Analyze this interview transcript and extract structured insights.
 
 CRITICAL: You MUST respond with ONLY valid JSON. Do not include any explanatory text before or after the JSON. Start your response with { and end with }.
 
 Interview transcript:
 
 ${transcript}`,
-        },
-      ],
+      systemPrompt: SYSTEM_PROMPT,
+      type: 'analyze',
     });
 
     const content = message.content[0];
@@ -135,36 +148,12 @@ ${transcript}`,
       throw new Error('Unexpected response type from Claude API');
     }
 
-    // Extract JSON from response (Claude sometimes wraps it in markdown)
-    let jsonText = content.text.trim();
-
-    // Log the raw response for debugging
-    console.log('=== RAW CLAUDE RESPONSE ===');
-    console.log('Full response:', jsonText);
-    console.log('First 500 chars:', jsonText.substring(0, 500));
-    console.log('=========================');
-
-    // Remove markdown code blocks if present
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
-    }
-
-    // Try to find JSON object if there's extra text
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[0];
-    }
-
-    console.log('Cleaned JSON text (first 500 chars):', jsonText.substring(0, 500));
+    const jsonText = extractJson(content.text);
 
     let analysis: InterviewAnalysis;
     try {
       analysis = JSON.parse(jsonText) as InterviewAnalysis;
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Failed to parse this text:', jsonText);
       throw new Error(`JSON parsing failed: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
@@ -186,17 +175,14 @@ ${transcript}`,
       },
     };
   } catch (error) {
-    console.error('Claude API error:', error);
-
     if (error instanceof Error) {
-      // Handle specific API errors
-      if (error.message.includes('401') || error.message.includes('authentication')) {
+      if (error.message.includes('401') || error.message.includes('authentication') || error.message.includes('Unauthorized')) {
         return {
           success: false,
-          error: 'Invalid Anthropic API key. Please check your environment variables.',
+          error: 'Authentication failed. Please sign in again.',
         };
       }
-      if (error.message.includes('429')) {
+      if (error.message.includes('429') || error.message.includes('rate limit')) {
         return {
           success: false,
           error: 'API rate limit exceeded. Please try again in a moment.',
@@ -294,11 +280,9 @@ Maturity Scale:
 CRITICAL: Respond with ONLY valid JSON. Do not include any text before or after the JSON object.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: 4096,
-      temperature: DEFAULT_TEMPERATURE,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await callAnalyzeFunction({
+      transcript: prompt,
+      type: 'executive-summary',
     });
 
     const content = response.content[0];
@@ -306,17 +290,8 @@ CRITICAL: Respond with ONLY valid JSON. Do not include any text before or after 
       throw new Error('Unexpected response type from Claude API');
     }
 
-    // Extract JSON from response
-    let jsonText = content.text.trim();
+    const jsonText = extractJson(content.text);
 
-    // Remove markdown code blocks if present
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
-    }
-
-    // Find JSON object
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
@@ -333,7 +308,6 @@ CRITICAL: Respond with ONLY valid JSON. Do not include any text before or after 
       maturityNotes: parsed.maturityNotes || '',
     };
   } catch (error) {
-    console.error('Executive summary generation failed:', error);
     return {
       narrativeSummary: '',
       keyFindings: [],
@@ -352,10 +326,7 @@ export async function generateCompanySummary(
   analyses: InterviewAnalysis[],
   dates: string[]
 ): Promise<CompanySummaryData> {
-  // First, aggregate the raw data locally for speed
   const summaryData = aggregateAnalyses(analyses, dates);
-
-  // Then generate AI-powered executive summary
   const executiveSummary = await generateExecutiveSummary(summaryData);
 
   return {
@@ -372,7 +343,7 @@ export async function analyzeMultipleTranscripts(
   onProgress?: (id: string, result: ClaudeAnalysisResponse) => void
 ): Promise<Map<string, ClaudeAnalysisResponse>> {
   const results = new Map<string, ClaudeAnalysisResponse>();
-  const concurrencyLimit = 3; // Process 3 at a time to avoid rate limits
+  const concurrencyLimit = 3;
 
   for (let i = 0; i < transcripts.length; i += concurrencyLimit) {
     const batch = transcripts.slice(i, i + concurrencyLimit);
@@ -390,7 +361,6 @@ export async function analyzeMultipleTranscripts(
 
     await Promise.all(batchPromises);
 
-    // Small delay between batches to be respectful of rate limits
     if (i + concurrencyLimit < transcripts.length) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }

@@ -134,12 +134,10 @@ function App() {
         continue;
       }
 
-      console.log(`Creating interview for: ${result.filename}, text length: ${result.text.length}`);
-
       // Create interview in database with metadata
       const { data: interview, error: createError } = await createInterview({
         user_id: user.id,
-        title: result.filename.replace(/\.txt$/i, ''),
+        title: result.filename.replace(/\.txt$/i, '').slice(0, 200),
         transcript_text: result.text,
         analysis_status: 'pending',
         // Interview metadata
@@ -591,7 +589,9 @@ function App() {
                     onDelete={handleDelete}
                     onView={setSelectedInterview}
                     onRename={async (id, newTitle) => {
-                      await updateInterview(id, { title: newTitle });
+                      const sanitized = newTitle.trim().slice(0, 200);
+                      if (!sanitized) return;
+                      await updateInterview(id, { title: sanitized });
                       addToast('Interview renamed', 'success');
                     }}
                     onRetryAnalysis={handleRetryAnalysis}

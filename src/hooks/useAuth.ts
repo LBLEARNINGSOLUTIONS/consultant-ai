@@ -48,7 +48,6 @@ export function useAuth() {
         // If profile doesn't exist, create a basic one or set loading to false
         if (error.code === 'PGRST116') {
           // No rows returned - profile doesn't exist
-          console.log('No profile found, setting loading to false');
           setProfile(null);
           setLoading(false);
           return;

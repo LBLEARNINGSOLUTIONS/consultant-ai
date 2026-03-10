@@ -83,7 +83,6 @@ export function useInterviews(userId?: string) {
   // Create interview mutation
   const createMutation = useMutation({
     mutationFn: async (interview: InsertInterview) => {
-      console.log('Creating interview with data:', interview);
       const { data, error } = await supabase
         .from('interviews')
         .insert(interview)

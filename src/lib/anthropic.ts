@@ -1,26 +1,38 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { supabase } from './supabase';
 
-const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-if (!apiKey) {
-  throw new Error('Missing Anthropic API key. Please check your .env file.');
+/**
+ * Call the Anthropic API via Supabase Edge Function (server-side proxy).
+ * The API key never leaves the server.
+ */
+export async function callAnalyzeFunction(params: {
+  transcript: string;
+  systemPrompt?: string;
+  type?: 'analyze' | 'executive-summary';
+}): Promise<{ content: Array<{ type: string; text: string }>; usage: { input_tokens: number; output_tokens: number } }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated. Please sign in.');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      transcript: params.transcript,
+      systemPrompt: params.systemPrompt,
+      type: params.type || 'analyze',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    throw new Error(errorData.error || `Edge function error: ${response.status}`);
+  }
+
+  return response.json();
 }
-
-export const anthropic = new Anthropic({
-  apiKey,
-  // For browser usage, you may need to use a proxy or backend service
-  // to avoid CORS issues. This setup assumes you're making requests from a server
-  // or have configured CORS appropriately.
-  dangerouslyAllowBrowser: true // Only for development/testing
-});
-
-// Export model configurations
-export const CLAUDE_MODELS = {
-  SONNET: 'claude-sonnet-4-20250514',
-  OPUS: 'claude-3-opus-20240229',
-  HAIKU: 'claude-3-5-haiku-20241022'
-} as const;
-
-export const DEFAULT_MODEL = CLAUDE_MODELS.SONNET;
-export const MAX_TOKENS = 16384;
-export const DEFAULT_TEMPERATURE = 0.3;

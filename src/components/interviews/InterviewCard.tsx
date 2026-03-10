@@ -107,6 +107,10 @@ export const InterviewCard = memo(function InterviewCard({
       handleCancelRename();
       return;
     }
+    if (trimmedTitle.length > 200) {
+      alert('Title must be 200 characters or less.');
+      return;
+    }
     await onRename(trimmedTitle);
     setIsEditing(false);
     setEditingTitle('');
